@@ -40,5 +40,33 @@ CHIP ALU {
         ng;      // (out < 0,  1, 0)
 
     PARTS:
-    //// Replace this comment with your code.
+    /* Zeroing numbers if zx or zy */
+    Mux16 (a=x, b=false, sel=zx, out=zedx);
+    Mux16 (a=y, b=false, sel=zy, out=zedy);
+
+    /* Negating numbers if nx or ny */
+    Not16 (in=zedx, out=pnedx);
+    Not16 (in=zedy, out=pnedy);
+
+    Mux16 (a=zedx, b=pnedx, sel=nx, out=fx);
+    Mux16 (a=zedy, b=pnedy, sel=ny, out=fy);
+    
+    /* Anding or Adding numbers */
+    And16 (a=fx, b=fy, out=oand);
+    Add16 (a=fx, b=fy, out=oadd);
+
+    Mux16 (a=oand, b=oadd, sel=f, out=opren);
+
+    /* Negating output if no */
+    Not16 (in=opren, out=pnedo);
+
+    Mux16 (a=opren, b=pnedo, sel=no, out=out, out[0..7]=fpartin, out[8..15]=spartin, out[15]=ng);
+
+    /* Calculation of status output zr */
+
+    Or8Way (in=fpartin, out=partf);
+    Or8Way (in=spartin, out=parts);
+
+    Or (a=partf, b=parts, out=prenzr);
+    Not (in=prenzr, out=zr);
 }
