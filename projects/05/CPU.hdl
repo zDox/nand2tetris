@@ -32,5 +32,41 @@ CHIP CPU {
         pc[15];          // Address of next instruction
 
     PARTS:
-    //// Replace this comment with your code.
+    Not (in=instruction[15], out=NotA);
+    
+    Or (a=NotA, b=instruction[5], out=loadA);
+    And (a=instruction[12], b=instruction[15], out=selM);
+    And (a=instruction[4], b=instruction[15], out=loadD);
+    
+    And (a=instruction[3], b=instruction[15], out=writeM);
+
+    Mux16(a=aluout, b=instruction, out=stage1, sel=NotA);
+
+    ARegister (in=stage1, out=aOut, load=loadA, out[0..14]=addressM);
+
+    Mux16(a=aOut, b=inM, sel=selM, out=aluy);
+
+    DRegister (in=aluout, out=alux, load=loadD);
+
+    ALU (x=alux, y=aluy, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=outM, out=aluout, zr=zr, ng=ng);
+
+    // Check Jump coditions
+    And (a=instruction[2], b=ng, out=mjc);
+    And (a=instruction[1], b=zr, out=zjc);
+
+    Or (a=ng, b=zr, out=ngorzr);
+    Not (in=ngorzr, out=notngorzr);
+    And (a=instruction[0], b=notngorzr, out=pjc);
+
+    // 3-Way Or
+    Or (a=mjc, b=zjc, out=mzjc);
+    Or (a=mzjc, b=pjc, out=jumpcond);
+
+    // Make check that jump only when c instruction
+    And (a=jumpcond, b=instruction[15], out=jump);
+
+
+    // Programm counter integration
+    Not (in=jump, out=notjump);
+    PC (in=aOut, load=jump, inc=notjump, reset=reset, out[0..14]=pc);
 }
