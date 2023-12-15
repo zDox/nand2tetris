@@ -1,0 +1,1 @@
+/home/jannik/Documents/Code/nand2tetris/projects/06/hack-assembler/target/debug/hack-assembler: /home/jannik/Documents/Code/nand2tetris/projects/06/hack-assembler/src/main.rs /home/jannik/Documents/Code/nand2tetris/projects/06/hack-assembler/src/parser.rs
