@@ -1,6 +1,6 @@
 
 mod parser;
-use parser::{ Parser, ParseError, Tokens};
+use parser::{ Parser, Tokens};
 use std::{ env, path::{ Path, PathBuf } };
 fn main() {    
     let args: Vec<String> = env::args().collect();
