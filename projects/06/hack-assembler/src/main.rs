@@ -12,12 +12,6 @@ fn main() {
     let path_buf = PathBuf::from(path_arg);
     let path = Path::new(&path_buf);
 
-    let parser: Parser = Parser::new();
-    let tokens: Tokens = Parser::parse(&path).unwrap();
-    tokens.iter().for_each(|line| {
-        line.iter().for_each(|token| {
-            print!("{}, ", token);
-        });
-        println!();
-    });
+    let mut parser = Parser::new();
+    let tokens: Tokens = parser.parse(&path).unwrap();
 }
