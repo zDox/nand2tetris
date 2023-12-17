@@ -19,13 +19,16 @@ impl SymbolTable {
         }
     }
 
-    fn set_symbol(&mut self, symbol: &str, value: &str) {
+    pub fn set_symbol(&mut self, symbol: &str, value: &str) {
         self.table.insert(symbol.to_string(), value.to_string());
     }
 
     pub fn get_symbol(&mut self, symbol: &str) -> String {
         if self.table.contains_key(symbol) {
             return self.table.get(symbol).unwrap().to_string();
+        }
+        else if symbol.chars().all(|c| c.is_digit(10)) {
+            return symbol.to_string();
         }
         else {
             self.current_address += 1;
