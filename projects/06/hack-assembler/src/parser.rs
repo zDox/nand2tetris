@@ -143,6 +143,7 @@ impl Parser {
     }
 
     fn generate_c_inst(&self, dest: &str, comp: &str, jump: &str) -> String {
+        println!("{}, {}, {}", dest, comp, jump);
         let comp_bits = match comp {
             "0"         => "0101010",
             "1"         => "0111111",
@@ -172,20 +173,16 @@ impl Parser {
             "D&M"       => "1000000",
             "D|A"       => "0010101",
             "D|M"       => "1010101",
-            _           => unreachable!(),
+            _         => unreachable!(),
         };
 
-        let dest_bits = match dest {
-            ""          => "000",
-            "M"         => "001",
-            "D"         => "010",
-            "DM"        => "011",
-            "A"         => "100",
-            "AM"        => "101",
-            "AD"        => "110",
-            "ADM"       => "111",
-            _           => unreachable!(),
-        };
+        let dest_bits: &str = &format!(
+            "{}{}{}",
+            if dest.contains('A') { '1' } else { '0' },
+            if dest.contains('D') { '1' } else { '0' },
+            if dest.contains('M') { '1' } else { '0' }
+        );
+
 
         let jump_bits = match jump {
             ""          => "000",
@@ -217,7 +214,7 @@ impl Parser {
             return Err(ParseError::InvalidInstruction);
         }
         let identifier = line.get(1..(line.len()-1)).unwrap();
-        if identifier.chars().all(|c| c.is_alphanumeric()) {
+        if identifier.chars().nth(1).is_some_and(|c| c.is_alphabetic()) {
             return Ok(Instruction::L(identifier.to_string()));
         }
         Err(ParseError::InvalidInstruction)
@@ -248,7 +245,7 @@ impl Parser {
             if c.is_alphanumeric() && current.chars().last().is_some_and(|last_char| last_char.is_whitespace()) {
                 return Err(ParseError::InvalidInstruction);
             }
-            if c.is_alphanumeric() || c == '-' || c == '+' {
+            if c.is_alphanumeric() || c == '-' || c == '+' || c == '|' || c == '&' || c == '!' {
                 current.push(c);
                 continue;
             }
