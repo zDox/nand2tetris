@@ -6,7 +6,7 @@ use std::{
 use core::iter::Peekable;
 
 
-enum CommandType {
+pub enum CommandType {
     Arithmetic,
     Push,
     Pop,
@@ -21,11 +21,12 @@ enum CommandType {
 
 pub struct Parser<'a> {
     content: String,
-    line_iter: Peekable<Lines<'a>>,
+    line_iter: Box<Peekable<Lines<'a>>>,
     current_line: String,
     current_command: CommandType,
 }
 
+#[derive(Debug)]
 pub enum ParseError {
     FileType,
     FileOpen,
@@ -34,8 +35,8 @@ pub enum ParseError {
     ExtractionArg2,
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(path: &Path) -> Result<Self, ParseError> {
+impl Parser<'_> {
+    pub fn new(path: &Path) -> Result<Parser<'_>, ParseError> {
         if !path.extension().is_some_and(|ext| ext == "vm") {
             return Err(ParseError::FileType);
         }
@@ -43,7 +44,7 @@ impl<'a> Parser<'a> {
         match content {
             Ok(content_str) => Ok(Self { 
                 content: content_str, 
-                line_iter: content_str.lines().peekable(), 
+                line_iter: Box::new(content_str.lines().peekable()), 
                 current_line: String::from(""),
                 current_command: CommandType::None,
             }),
