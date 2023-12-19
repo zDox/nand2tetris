@@ -21,4 +21,8 @@ impl VMTranslator {
             code_writer: CodeWriter::new(),
         }
     }
+
+    pub fn translate() {
+
+    }
 }

@@ -19,9 +19,9 @@ pub enum CommandType {
     None,
 }
 
-pub struct Parser<'a> {
+pub struct Parser {
     content: String,
-    line_iter: Box<Peekable<Lines<'a>>>,
+    line_iter: Peekable<Box<dyn Iterator<Item = String>>>,
     current_line: String,
     current_command: CommandType,
 }
@@ -35,19 +35,21 @@ pub enum ParseError {
     ExtractionArg2,
 }
 
-impl Parser<'_> {
-    pub fn new(path: &Path) -> Result<Parser<'_>, ParseError> {
+impl Parser {
+    pub fn new(path: &Path) -> Result<Parser, ParseError> {
         if !path.extension().is_some_and(|ext| ext == "vm") {
             return Err(ParseError::FileType);
         }
         let content = read_to_string(path);
         match content {
-            Ok(content_str) => Ok(Self { 
+            Ok(content_str) => {
+                let line_iter = Box::new(content_str.lines().map(String::from)).peekable();
+                Ok(Self { 
                 content: content_str, 
-                line_iter: Box::new(content_str.lines().peekable()), 
+                line_iter, 
                 current_line: String::from(""),
                 current_command: CommandType::None,
-            }),
+            })},
             Err(_) => Err(ParseError::FileOpen),
         }
     }

@@ -1,4 +1,3 @@
-use super::parser::CommandType;
 use std::{ fs::write, path::Path };
 
 
@@ -19,39 +18,89 @@ impl CodeWriter {
     }
 
     // only push
-    pub fn write_push_pop(&mut self, segment: &str, index: u32) {
+    pub fn write_push(&mut self, segment: &str, index: u32) {
         // First load data, which should be pushed onto the stack into the D Register
-        let base_address_loc = match segment {
+
+        let base_address_loc = Self::get_ram_location_for_segment(segment);
+        match base_address_loc {
+            "temp" | "R13" | "R14" | "R15" => {
+                self.write(&format!("@{}", base_address_loc));
+            },
+            "constant" => {
+                self.write(&format!("@{}", index));
+                self.write("D=A");
+            },
+            val => {
+                self.write(&format!("@{}", base_address_loc));
+                self.write("A=M");
+            },
+        };
+
+        // if segment is not argument than is in the a registry the base address
+        if base_address_loc != "constant" {
+            self.write(&format!("A=A+{}", index));
+            self.write("D=M");
+        }
+
+
+        // Now set top of stack to the value of the D Register
+        self.write("@SP");
+        self.write("A=M");
+        self.write("M=D");
+        
+        self.increment_sp_by(1);
+    }
+
+
+    pub fn write_pop(&mut self, segment: &str, index: u32) {
+        // First load data, which should be pop from the stack into the D Register
+
+        let base_address_loc = Self::get_ram_location_for_segment(segment);
+
+
+        self.write("@SP");
+        self.write("A=M");
+        self.write("D=M");
+
+        match base_address_loc {
+            "temp" | "R13" | "R14" | "R15" => {
+                self.write(&format!("@{}", base_address_loc));
+            },
+            val => {
+                self.write(&format!("@{}", base_address_loc));
+                self.write("A=M");
+            },
+        };
+
+        // if segment is not argument than is in the a registry the base address
+        if base_address_loc != "constant" {
+            self.write(&format!("A=A+{}", index));
+        }
+        
+        self.write("M=D");
+        self.increment_sp_by(-1);
+    }
+
+    fn get_ram_location_for_segment(segment: &str) -> &str {
+        match segment {
             "local"     => "LCL",
             "argument"  => "ARG",
             "this"      => "THIS",
             "that"      => "THAT",
-            "temp" | "R13" | "R14" | "R15" => segment,
+            "temp" | "constant" | "R13" | "R14" | "R15" => segment,
             _           => unreachable!(),
-        };
+        }
+    }
 
-        match base_address_loc {
-            "temp" | "R13" | "R14" | "R15" => {
-                self.output.push_str(&format!("@{}", base_address_loc));
-            },
-            val => {
-                self.output.push_str(&format!("@{}", base_address_loc));
-                self.output.push_str("A=M");
-            },
-        };
+    fn increment_sp_by(&mut self, val: i32) {
+        let val_out = if val >= 0 { &format!("+{}", val) } else { &format!("-{}", val) };
+        self.write(&format!("// SP = SP {}", val_out));
+        self.write("@SP");
+        self.write(&format!("// M=M{}", val_out));
+    }
 
-        self.output.push_str(&format!("A=A+{}", index));
-        self.output.push_str("D=M");
-
-
-        // Now set top of stack to the value of the D Register
-        self.output.push_str("@SP");
-        self.output.push_str("A=M");
-        self.output.push_str("M=D");
-
-        // SP++
-        self.output.push_str("@SP");
-        self.output.push_str("M=M+1");
+    fn write(&mut self, asm_command: &str) {
+        self.write(asm_command);
     }
 
     pub fn save(&self, path: &Path) -> Result<(), CodeGenerationError>{
