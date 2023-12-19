@@ -80,8 +80,10 @@ impl CodeWriter {
         };
 
         // if segment is not argument than is in the a registry the base address
-        if base_address_loc != "constant" {
-            self.write(&format!("A=A+{}", index));
+        if base_address_loc != "constant"{
+            if index != 0 {
+                self.write(&format!("A=A+{}", index));
+            }
             self.write("D=M");
         }
 
@@ -100,6 +102,9 @@ impl CodeWriter {
     pub fn write_pop(&mut self, segment: &str, index: i32) {
         self.write_comment(&format!("Pop command 'segment: {} index: {}'", segment, index));
         // First load data, which should be pop from the stack into the D Register
+        //
+
+        self.increment_sp_by(-1);
 
         let base_address_loc = Self::get_ram_location_for_segment(segment);
 
@@ -120,11 +125,12 @@ impl CodeWriter {
 
         // if segment is not argument than is in the a registry the base address
         if base_address_loc != "constant" {
-            self.write(&format!("A=A+{}", index));
+            if index != 0 {
+                self.write(&format!("A=A+{}", index));
+            }
         }
         
         self.write("M=D");
-        self.increment_sp_by(-1);
 
         self.write_empty_line();
     }
@@ -141,10 +147,10 @@ impl CodeWriter {
     }
 
     fn increment_sp_by(&mut self, val: i32) {
-        let val_out = if val >= 0 { format!("+{}", val) } else { format!("-{}", val) };
+        let val_out = if val >= 0 { format!("+{}", val) } else { val.to_string() };
         self.write(&format!("// SP = SP {}", val_out));
         self.write("@SP");
-        self.write(&format!("// M=M{}", val_out));
+        self.write(&format!("M=M{}", val_out));
     }
 
     fn write_empty_line(&mut self) {
@@ -152,11 +158,11 @@ impl CodeWriter {
     }
 
     fn write_comment(&mut self, comment: &str) {
-        self.write(&format!("// {}", comment));
+        self.write(&format!("// {} \n", comment));
     }
 
     fn write(&mut self, asm_command: &str) {
-        self.output.push_str(asm_command);
+        self.output.push_str(&format!("{}\n", asm_command));
     }
 
     pub fn save(&self, path: &Path) -> Result<(), CodeGenerationError>{
