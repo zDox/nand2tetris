@@ -7,17 +7,18 @@ pub enum CodeGenerationError {
 
 pub struct CodeWriter {
     output: String,
+    line_number: u32,
 }
 
 impl CodeWriter {
     pub fn new() -> Self {
-        Self { output: String::from("") }
+        Self { output: String::from(""), line_number: 0 }
     }
 
     pub fn write_arithmetic(&mut self, command: &str) {
-        self.write_comment(&format!("Arithmetic command '{}'", command));
+        self.write_comment(&format!("Start: Arithmetic command '{}'", command));
         // Pop either one or two elements from the stack depending on which command
-        let two_numbers_operation = match command {
+         match command {
             "add" | "sub" | "eq" | "gt" | "lt" | "and" | "or"   => {
                 self.write_pop("R13", 0);
                 self.write_pop("R14", 0);
@@ -30,23 +31,23 @@ impl CodeWriter {
             unexpected                                          => panic!("unexpected arithmetic command '{}'", unexpected),
         };
 
-        if two_numbers_operation {
-            self.write("@R13");
-            self.write("D=M");
-        }
+        self.write_code("@R13");
+        self.write_code("D=M");
 
-        self.write("@R14");
+        self.write_code("@R14");
+
+        // M = y, D = x
 
         match command {
-            "add"   => self.write("M=M+D"),
-            "sub"   => self.write("M=M+D"),
-            "neg"   => self.write("M=-D"),
-            "eq"    => unimplemented!(),
-            "gt"    => unimplemented!(),
-            "lt"    => unimplemented!(),
-            "and"   => self.write("M=M&D"),
-            "or"    => self.write("M=M|D"),
-            "not"   => self.write("M=!M"),
+            "add"   => self.write_code("M=M+D"),
+            "sub"   => self.write_code("M=M-D"),
+            "neg"   => self.write_code("M=-D"),
+            "eq"    => self.write_comparison("JEQ"),
+            "gt"    => self.write_comparison("JGT"),
+            "lt"    => self.write_comparison("JLT"),
+            "and"   => self.write_code("M=M&D"),
+            "or"    => self.write_code("M=M|D"),
+            "not"   => self.write_code("M=!D"),
             _ => unreachable!(),
         }
 
@@ -55,52 +56,54 @@ impl CodeWriter {
 
         self.write_push("R14", 0);
 
+        self.write_comment(&format!("End: Arithmetic command '{}'", command));
         self.write_empty_line();
     }
 
 
     // only push
     pub fn write_push(&mut self, segment: &str, index: i32) {
-        self.write_comment(&format!("Push command 'segment: {} index: {}'", segment, index));
+        self.write_comment(&format!("Start: Push command 'segment: {} index: {}'", segment, index));
         // First load data, which should be pushed onto the stack into the D Register
 
         let base_address_loc = Self::get_ram_location_for_segment(segment);
         match base_address_loc {
             "temp" | "R13" | "R14" | "R15" => {
-                self.write(&format!("@{}", base_address_loc));
+                self.write_code(&format!("@{}", base_address_loc));
             },
             "constant" => {
-                self.write(&format!("@{}", index));
-                self.write("D=A");
+                self.write_code(&format!("@{}", index));
+                self.write_code("D=A");
             },
             _ => {
-                self.write(&format!("@{}", base_address_loc));
-                self.write("A=M");
+                self.write_code(&format!("@{}", base_address_loc));
+                self.write_code("A=M");
             },
         };
 
         // if segment is not argument than is in the a registry the base address
         if base_address_loc != "constant"{
             if index != 0 {
-                self.write(&format!("A=A+{}", index));
+                self.write_code(&format!("A=A+{}", index));
             }
-            self.write("D=M");
+            self.write_code("D=M");
         }
 
 
         // Now set top of stack to the value of the D Register
-        self.write("@SP");
-        self.write("A=M");
-        self.write("M=D");
+        self.write_code("@SP");
+        self.write_code("A=M");
+        self.write_code("M=D");
         
         self.increment_sp_by(1);
 
+        self.write_comment(&format!("End: Push command 'segment: {} index: {}'", segment, index));
         self.write_empty_line();
     }
 
 
     pub fn write_pop(&mut self, segment: &str, index: i32) {
-        self.write_comment(&format!("Pop command 'segment: {} index: {}'", segment, index));
+        self.write_comment(&format!("Start: Pop command 'segment: {} index: {}'", segment, index));
         // First load data, which should be pop from the stack into the D Register
         //
 
@@ -109,29 +112,30 @@ impl CodeWriter {
         let base_address_loc = Self::get_ram_location_for_segment(segment);
 
 
-        self.write("@SP");
-        self.write("A=M");
-        self.write("D=M");
+        self.write_code("@SP");
+        self.write_code("A=M");
+        self.write_code("D=M");
 
         match base_address_loc {
             "temp" | "R13" | "R14" | "R15" => {
-                self.write(&format!("@{}", base_address_loc));
+                self.write_code(&format!("@{}", base_address_loc));
             },
             _ => {
-                self.write(&format!("@{}", base_address_loc));
-                self.write("A=M");
+                self.write_code(&format!("@{}", base_address_loc));
+                self.write_code("A=M");
             },
         };
 
         // if segment is not argument than is in the a registry the base address
         if base_address_loc != "constant" {
             if index != 0 {
-                self.write(&format!("A=A+{}", index));
+                self.write_code(&format!("A=A+{}", index));
             }
         }
         
-        self.write("M=D");
+        self.write_code("M=D");
 
+        self.write_comment(&format!("End: Pop command 'segment: {} index: {}'", segment, index));
         self.write_empty_line();
     }
 
@@ -146,11 +150,23 @@ impl CodeWriter {
         }
     }
 
+    fn write_comparison(&mut self, jump_cond: &str) {
+        self.write_code("D=M-D");
+        self.write_code(&format!("@{}", self.line_number+6));
+        self.write_code(&format!("D;{}", jump_cond));
+        self.write_code("@R14");
+        self.write_code("M=0");
+        self.write_code(&format!("@{}", self.line_number+4));
+        self.write_code("0; JMP");
+        self.write_code("@R14");
+        self.write_code("M=-1");
+    }
+
     fn increment_sp_by(&mut self, val: i32) {
         let val_out = if val >= 0 { format!("+{}", val) } else { val.to_string() };
-        self.write(&format!("// SP = SP {}", val_out));
-        self.write("@SP");
-        self.write(&format!("M=M{}", val_out));
+        self.write_comment(&format!("// SP = SP {}", val_out));
+        self.write_code("@SP");
+        self.write_code(&format!("M=M{}", val_out));
     }
 
     fn write_empty_line(&mut self) {
@@ -159,6 +175,11 @@ impl CodeWriter {
 
     fn write_comment(&mut self, comment: &str) {
         self.write(&format!("// {} \n", comment));
+    }
+
+    fn write_code(&mut self, asm_command: &str) {
+        self.line_number += 1;
+        self.write(asm_command);
     }
 
     fn write(&mut self, asm_command: &str) {
