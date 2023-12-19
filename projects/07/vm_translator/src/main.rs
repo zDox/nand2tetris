@@ -1,5 +1,5 @@
 
-use std::{ env, path::{ Path, PathBuf }};
+use std::{ env, path::Path };
 
 mod vm_translator;
 use vm_translator::VMTranslator;
@@ -11,9 +11,9 @@ fn main() {
     }
     let path_arg = &args[1];
 
-    let mut path_buf = PathBuf::from(path_arg);
-    let path = Path::new(&path_buf);
-    let vm_translator = VMTranslator::new(&path);
+    let path = Path::new(&path_arg);
+    let mut vm_translator = VMTranslator::new(&path);
+    vm_translator.translate();
 
     println!("Hello, world!");
 }
