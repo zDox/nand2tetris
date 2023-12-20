@@ -20,12 +20,12 @@ impl CodeWriter {
         // Pop either one or two elements from the stack depending on which command
          match command {
             "add" | "sub" | "eq" | "gt" | "lt" | "and" | "or"   => {
-                self.write_pop("R13", 0);
-                self.write_pop("R14", 0);
+                self.write_pop("R13", 0); // y in R13
+                self.write_pop("R14", 0); // x in R14
                 true
             },
             "neg" | "not"                                       => {
-                self.write_pop("R13", 0);
+                self.write_pop("R13", 0); // y in R13
                 false
             },
             unexpected                                          => panic!("unexpected arithmetic command '{}'", unexpected),
@@ -36,7 +36,7 @@ impl CodeWriter {
 
         self.write_code("@R14");
 
-        // M = y, D = x
+        // M = x, D = y
 
         match command {
             "add"   => self.write_code("M=M+D"),
@@ -68,7 +68,8 @@ impl CodeWriter {
 
         let base_address_loc = Self::get_ram_location_for_segment(segment);
         match base_address_loc {
-            "temp" | "R13" | "R14" | "R15" => {
+            "TEMP" => self.write_code("@5"),
+            "R13" | "R14" | "R15" => {
                 self.write_code(&format!("@{}", base_address_loc));
             },
             "constant" => {
@@ -83,9 +84,18 @@ impl CodeWriter {
 
         // if segment is not argument than is in the a registry the base address
         if base_address_loc != "constant"{
-            if index != 0 {
-                self.write_code(&format!("A=A+{}", index));
+            if index == 1 {
+                self.write_code("A=A+1");
             }
+            else if index == -1 {
+                self.write_code("A=A-1");
+            }
+            else if index != 0 {
+                self.write_code("D=A");
+                self.write_code(&format!("@{}", index));
+                self.write_code("A=A+D");
+            }
+
             self.write_code("D=M");
         }
 
@@ -112,14 +122,17 @@ impl CodeWriter {
         let base_address_loc = Self::get_ram_location_for_segment(segment);
 
 
-        self.write_code("@SP");
-        self.write_code("A=M");
-        self.write_code("D=M");
+
 
         match base_address_loc {
-            "temp" | "R13" | "R14" | "R15" => {
+
+            "TEMP" => self.write_code("@5"),
+            "R13" | "R14" | "R15" => {
                 self.write_code(&format!("@{}", base_address_loc));
             },
+            "constant" => {
+                self.write_code(&format!("@{}", index));
+            }
             _ => {
                 self.write_code(&format!("@{}", base_address_loc));
                 self.write_code("A=M");
@@ -128,10 +141,30 @@ impl CodeWriter {
 
         // if segment is not argument than is in the a registry the base address
         if base_address_loc != "constant" {
-            if index != 0 {
-                self.write_code(&format!("A=A+{}", index));
+            if index == 1 {
+                self.write_code("A=A+1");
+            }
+            else if index == -1 {
+                self.write_code("A=A-1");
+            }
+            else if index != 0 {
+                self.write_code("D=A");
+                self.write_code(&format!("@{}", index));
+                self.write_code("A=A+D");
             }
         }
+
+        self.write_code("D=A");
+        self.write_code("@R15");
+        self.write_code("M=D");
+
+
+        self.write_code("@SP");
+        self.write_code("A=M");
+        self.write_code("D=M");
+
+        self.write_code("@R15");
+        self.write_code("A=M");
         
         self.write_code("M=D");
 
@@ -145,7 +178,8 @@ impl CodeWriter {
             "argument"  => "ARG",
             "this"      => "THIS",
             "that"      => "THAT",
-            "temp" | "constant" | "R13" | "R14" | "R15" => segment,
+            "temp"      => "TEMP",
+            "constant" | "R13" | "R14" | "R15" => segment,
             _           => unreachable!(),
         }
     }
