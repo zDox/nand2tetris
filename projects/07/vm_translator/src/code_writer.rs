@@ -15,7 +15,7 @@ pub struct CodeWriter {
 
 impl CodeWriter {
     pub fn new() -> Self {
-        Self { output: String::from(""), line_number: 0, static_table: SymbolTable::new()}
+        Self { output: String::from(""), line_number: 0, static_table: SymbolTable::new(15)}
     }
 
     pub fn write_arithmetic(&mut self, command: &str) {
@@ -74,6 +74,7 @@ impl CodeWriter {
             "static" => {
                 let addr = self.static_table.get_symbol(&index.to_string());
                 self.write_code(&format!("@{}", addr));
+                self.write_code("D=M");
             },
             "TEMP" => self.write_code("@5"),
             "pointer" => self.write_code("@3"),
@@ -133,6 +134,7 @@ impl CodeWriter {
         match base_address_loc {
             "static" => {
                 let addr = self.static_table.get_symbol(&index.to_string());
+                println!("addr: {}", addr);
                 self.write_code(&format!("@{}", addr));
             },
             "pointer" => self.write_code("@3"),

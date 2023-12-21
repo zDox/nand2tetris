@@ -11,10 +11,10 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn new() -> Self {
+    pub fn new(current_address: u32) -> Self {
         SymbolTable { 
             table: HashMap::new(),
-            current_address: 0, 
+            current_address, 
             max_address: 0,
         }
     }
@@ -26,9 +26,6 @@ impl SymbolTable {
     pub fn get_symbol(&mut self, symbol: &str) -> String {
         if self.table.contains_key(symbol) {
             return self.table.get(symbol).unwrap().to_string();
-        }
-        else if symbol.chars().all(|c| c.is_digit(10)) {
-            return symbol.to_string();
         }
         else {
             self.current_address += 1;
