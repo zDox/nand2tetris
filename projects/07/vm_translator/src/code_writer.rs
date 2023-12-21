@@ -1,5 +1,7 @@
 use std::{ fs::write, path::Path };
 
+mod symbol_table;
+use symbol_table::SymbolTable;
 
 pub enum CodeGenerationError {
     SaveFile,
@@ -8,11 +10,12 @@ pub enum CodeGenerationError {
 pub struct CodeWriter {
     output: String,
     line_number: u32,
+    static_table: SymbolTable,
 }
 
 impl CodeWriter {
     pub fn new() -> Self {
-        Self { output: String::from(""), line_number: 0 }
+        Self { output: String::from(""), line_number: 0, static_table: SymbolTable::new()}
     }
 
     pub fn write_arithmetic(&mut self, command: &str) {
@@ -68,7 +71,12 @@ impl CodeWriter {
 
         let base_address_loc = Self::get_ram_location_for_segment(segment);
         match base_address_loc {
+            "static" => {
+                let addr = self.static_table.get_symbol(&index.to_string());
+                self.write_code(&format!("@{}", addr));
+            },
             "TEMP" => self.write_code("@5"),
+            "pointer" => self.write_code("@3"),
             "R13" | "R14" | "R15" => {
                 self.write_code(&format!("@{}", base_address_loc));
             },
@@ -83,7 +91,7 @@ impl CodeWriter {
         };
 
         // if segment is not argument than is in the a registry the base address
-        if base_address_loc != "constant"{
+        if !["constant", "static"].contains(&base_address_loc){
             if index == 1 {
                 self.write_code("A=A+1");
             }
@@ -122,10 +130,12 @@ impl CodeWriter {
         let base_address_loc = Self::get_ram_location_for_segment(segment);
 
 
-
-
         match base_address_loc {
-
+            "static" => {
+                let addr = self.static_table.get_symbol(&index.to_string());
+                self.write_code(&format!("@{}", addr));
+            },
+            "pointer" => self.write_code("@3"),
             "TEMP" => self.write_code("@5"),
             "R13" | "R14" | "R15" => {
                 self.write_code(&format!("@{}", base_address_loc));
@@ -140,7 +150,7 @@ impl CodeWriter {
         };
 
         // if segment is not argument than is in the a registry the base address
-        if base_address_loc != "constant" {
+        if !["constant", "static"].contains(&base_address_loc) {
             if index == 1 {
                 self.write_code("A=A+1");
             }
@@ -179,6 +189,8 @@ impl CodeWriter {
             "this"      => "THIS",
             "that"      => "THAT",
             "temp"      => "TEMP",
+            "pointer"   => "pointer",
+            "static"    => "static",
             "constant" | "R13" | "R14" | "R15" => segment,
             _           => unreachable!(),
         }
