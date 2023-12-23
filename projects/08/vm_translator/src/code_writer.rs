@@ -12,6 +12,7 @@ pub struct CodeWriter {
     output: String,
     line_number: u32,
     static_table: SymbolTable,
+    call_count: u32,
 }
 
 impl CodeWriter {
@@ -20,6 +21,7 @@ impl CodeWriter {
             file_name: file_name.to_string(),
             output: String::from(""), 
             line_number: 0, 
+            call_count: 0, 
             static_table: SymbolTable::new(15)
         }
     }
@@ -202,15 +204,94 @@ impl CodeWriter {
     }
 
     pub fn write_function(&mut self, fn_name: &str, n_vars: i32) {
-        todo!();
+        self.write_comment(&format!("Start: Function: {} n_vars: {}", fn_name, n_vars.to_string()));
+
+        self.write_label(&format!("{}.{}", self.file_name, fn_name));
+
+        (0..n_vars).for_each(|_| {
+            self.write_push("constant", 0);
+        });
+
+        self.write_comment(&format!("End: Function: {} n_vars: {}", fn_name, n_vars.to_string()));
     }
 
     pub fn write_call(&mut self, fn_name: &str, n_args: i32) {
-        todo!();
+        self.write_comment(&format!("Start: Function-Call: {} n_args: {}", fn_name, n_args.to_string()));
+
+        let ret_label = format!("{}$ret{}", fn_name, self.call_count);
+        self.call_count += 1;
+
+        // Do i need to push a 0 value to reserve a mem slot for the return value if n_args==0 ?
+        
+        // push return_address, LCL, ARG, THIS, THAT onto the stack 
+        [&format!("@{}", ret_label), "@LCL", "@ARG", "@THIS", "@THAT"].iter().for_each(|ptr| {
+            self.write_code(ptr);
+            self.write_code("D=A");
+            self.write_code("@SP");
+            self.write_code("M=D");
+            self.increment_sp_by(1);
+        });
+
+        // Set ARG to lately pushed arguments
+        self.write_code("@SP");
+        self.write_code("D=M");
+        self.write_code(&format!("@{}", 5 + n_args));
+
+        // put return Label
+        self.write_label(&ret_label);
+
+        // give control to function
+        self.write_goto(&format!("{}.{}", self.file_name, fn_name));
+
+        self.write_comment(&format!("End: Function-Call: {} n_args: {}", fn_name, n_args.to_string()));
     }
 
     pub fn write_return(&mut self) {
-        todo!();
+        self.write_comment(&format!("Start: Function-Return"));
+
+        // Push value of LCL into R13
+        self.write_code("@LCL");
+        self.write_code("D=M");
+        self.write_code("@R13");
+        self.write_code("M=D");
+
+
+        // Push return address into R14
+        self.write_code("@5");
+        self.write_code("A=D-A");
+        self.write_code("D=M");
+        self.write_code("@R14");
+        self.write_code("M=D");
+
+        // Set ARG0 to return value
+        self.write_pop("argument", 0);
+
+        // Reposition SP for the caller
+        self.write_code("@ARG");
+        self.write_code("D=M");
+        self.write_code("@SP");
+        self.write_code("M=D+1");
+
+
+        for (i, ptr) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
+            // Put LCL into D-Register
+            self.write_code("@R13");
+            self.write_code("D=M");
+
+            // Restore ptr
+            self.write_code(&format!("@{}", i+1));
+            self.write_code("A=D-A");
+            self.write_code("D=M");
+            self.write_code(ptr);
+            self.write_code("M=D");
+        }
+        
+        // Give control back to caller
+        self.write_code("@R14");
+        self.write_code("A=M");
+        self.write_code("0;JMP");
+
+        self.write_comment(&format!("End: Function-Return"));
     }
 
 
@@ -242,10 +323,10 @@ impl CodeWriter {
 
     fn increment_sp_by(&mut self, val: i32) {
         let val_out = if val >= 0 { format!("+{}", val) } else { val.to_string() };
-        self.write_comment(&format!("SP = SP {}", val_out));
+        self.write_comment(&format!("Start: Increment SP by {}", val_out));
         self.write_code("@SP");
         self.write_code(&format!("M=M{}", val_out));
-        self.write_comment(&format!("Start of increment: SP = SP {}", val_out));
+        self.write_comment(&format!("End: Increment SP by {}", val_out));
     }
 
     fn write_empty_line(&mut self) {

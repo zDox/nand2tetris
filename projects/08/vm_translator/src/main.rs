@@ -15,5 +15,4 @@ fn main() {
     let mut vm_translator = VMTranslator::new(&path);
     vm_translator.translate();
 
-    println!("Translation of file '{}' completed", path.file_name().expect("Not a Ostr").to_str().unwrap_or(""));
 }

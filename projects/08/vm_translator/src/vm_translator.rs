@@ -1,6 +1,4 @@
-use std::{
-    path::Path
-};
+use std::path::Path;
 
 #[path = "parser.rs"]
 mod parser;
@@ -24,26 +22,30 @@ impl VMTranslator {
 
     pub fn translate(&mut self) {
         if self.path.is_dir() { self.translate_folder(); }
-        else if self.path.is_file() { self.translate_file(); }
+        else if self.path.is_file() { self.translate_file(&self.path.clone()); }
+
+
+        let _res = self.code_writer.save(&self.path);
     }
 
     fn translate_folder(&mut self) {
+        println!("Translating folder '{}'", self.path.display());
         let paths = self.path.read_dir().expect("Could not read folder");
 
         self.code_writer.write_bootstrap_code();
 
         for path in paths {
-            let path_path = path.unwrap().path().as_path();
-            if path_path.extension().unwrap() == ".asm" {
-                self.code_writer.set_file_name(path_path.file_stem().unwrap().to_str().unwrap());
-                self.translate_file();
+            let file_path = path.unwrap().path();
+            if file_path.extension().unwrap() == "vm" {
+                self.code_writer.set_file_name(file_path.file_stem().unwrap().to_str().unwrap());
+                self.translate_file(&file_path);
             }
         }
     }
 
 
-    fn translate_file(&mut self) {
-        let mut parser = Parser::new(&self.path).expect("File has wrong Filetype: expeceted .vm");
+    fn translate_file(&mut self, file_path: &Path) {
+        let mut parser = Parser::new(file_path).expect("File has wrong Filetype: expeceted .vm");
         while parser.has_more_lines() {
             parser.advance();
             let _res = match parser.command_type().expect("Failed determining CommandType"){
@@ -68,6 +70,6 @@ impl VMTranslator {
             };
         }
 
-        let _res = self.code_writer.save(&self.path);
+        println!("Translation of file '{}' completed", file_path.file_name().unwrap().to_str().unwrap());
     }
 }
