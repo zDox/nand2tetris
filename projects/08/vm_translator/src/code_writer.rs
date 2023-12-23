@@ -213,19 +213,6 @@ impl CodeWriter {
         todo!();
     }
 
-    fn get_ram_location_for_segment(segment: &str) -> &str {
-        match segment {
-            "local"     => "LCL",
-            "argument"  => "ARG",
-            "this"      => "THIS",
-            "that"      => "THAT",
-            "temp"      => "TEMP",
-            "pointer"   => "pointer",
-            "static"    => "static",
-            "constant" | "R13" | "R14" | "R15" => segment,
-            _           => unreachable!(),
-        }
-    }
 
     fn write_comparison(&mut self, jump_cond: &str) {
         self.write_code("D=M-D");
@@ -237,6 +224,20 @@ impl CodeWriter {
         self.write_code("0; JMP");
         self.write_code("@R14");
         self.write_code("M=-1");
+    }
+
+    pub fn write_bootstrap_code(&mut self) {
+        self.write_comment("Start: Bootstrap Code");
+
+        // Load 256 into SP
+        self.write_code("@256");
+        self.write_code("D=A");
+        self.write_code("@SP");
+        self.write_code("M=D");
+
+        // call Sys.init
+        self.write_call("Sys.init", 0);
+        self.write_comment("End: Bootstrap Code");
     }
 
     fn increment_sp_by(&mut self, val: i32) {
@@ -277,6 +278,20 @@ impl CodeWriter {
         match write(path_buf, &self.output) {
             Ok(_) => Ok(()),
             Err(_) => Err(CodeGenerationError::SaveFile),
+        }
+    }
+
+    fn get_ram_location_for_segment(segment: &str) -> &str {
+        match segment {
+            "local"     => "LCL",
+            "argument"  => "ARG",
+            "this"      => "THIS",
+            "that"      => "THAT",
+            "temp"      => "TEMP",
+            "pointer"   => "pointer",
+            "static"    => "static",
+            "constant" | "R13" | "R14" | "R15" => segment,
+            _           => unreachable!(),
         }
     }
 }
