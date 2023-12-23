@@ -15,9 +15,9 @@ pub struct CodeWriter {
 }
 
 impl CodeWriter {
-    pub fn new() -> Self {
+    pub fn new(file_name: &str) -> Self {
         Self { 
-            file_name: String::from(""),
+            file_name: file_name.to_string(),
             output: String::from(""), 
             line_number: 0, 
             static_table: SymbolTable::new(15)
@@ -72,7 +72,7 @@ impl CodeWriter {
         let base_address_loc = Self::get_ram_location_for_segment(segment);
         match base_address_loc {
             "static" => {
-                let addr = self.static_table.get_symbol(&index.to_string());
+                let addr = self.static_table.get_symbol(&format!("{}.{}", self.file_name, index.to_string()));
                 self.write_code(&format!("@{}", addr));
                 self.write_code("D=M");
             },
@@ -133,8 +133,7 @@ impl CodeWriter {
 
         match base_address_loc {
             "static" => {
-                let addr = self.static_table.get_symbol(&index.to_string());
-                println!("addr: {}", addr);
+                let addr = self.static_table.get_symbol(&format!("{}.{}", self.file_name, index.to_string()));
                 self.write_code(&format!("@{}", addr));
             },
             "pointer" => self.write_code("@3"),
@@ -185,15 +184,21 @@ impl CodeWriter {
     }
 
     pub fn write_label(&mut self, label: &str) {
-        todo!();
+        self.write_code(&format!("({}.{})", self.file_name, label));
     }
 
     pub fn write_goto(&mut self, label: &str) {
-        todo!();
+        self.write_code(&format!("@{}.{}", self.file_name, label));
+        self.write_code("0;JMP");
     }
 
     pub fn write_if_goto(&mut self, label: &str) {
-        todo!();
+        self.write_comment(&format!("Start: IF_GOTO label: {}", label));
+        self.write_pop("R13", 0);
+        self.write_code("D=M");
+        self.write_code(&format!("@{}.{}", self.file_name, label));
+        self.write_code("D;JGT");
+        self.write_comment(&format!("End: IF_GOTO label: {}", label));
     }
 
     pub fn write_function(&mut self, fn_name: &str, n_vars: i32) {
@@ -260,6 +265,9 @@ impl CodeWriter {
     }
 
     pub fn set_file_name(&mut self, file_name: &str) {
+        self.file_name = file_name.to_string();
+        self.write_comment(&format!("File: '{}'", file_name));
+        self.write_empty_line();
     }
 
     pub fn save(&self, path: &Path) -> Result<(), CodeGenerationError>{

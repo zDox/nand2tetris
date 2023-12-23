@@ -18,7 +18,7 @@ impl VMTranslator {
         Self {
             path: path.into(),
             parser: Parser::new(path).expect("File has wrong Filetype: expeceted .vm"), 
-            code_writer: CodeWriter::new(),
+            code_writer: CodeWriter::new(path.file_stem().unwrap().to_str().unwrap()),
         }
     }
 

@@ -91,8 +91,7 @@ impl Parser {
     }
 
     pub fn command_type(&mut self) -> Result<&CommandType, ParseError> {
-        println!("{}", self.current_line);
-        self.current_command = match self.current_line.trim() {
+        self.current_command = match &self.current_line {
             line if line.starts_with("push") => CommandType::Push,
             line if line.starts_with("pop") => CommandType::Pop,
             line if ["add", "sub", "neg", "eq", "gt", "lt", "and", "or", "not"]
