@@ -186,11 +186,11 @@ impl CodeWriter {
     }
 
     pub fn write_label(&mut self, label: &str) {
-        self.write_code(&format!("({}.{})", self.file_name, label));
+        self.write_code(&format!("({})", label));
     }
 
     pub fn write_goto(&mut self, label: &str) {
-        self.write_code(&format!("@{}.{}", self.file_name, label));
+        self.write_code(&format!("@{}", label));
         self.write_code("0;JMP");
     }
 
@@ -198,15 +198,15 @@ impl CodeWriter {
         self.write_comment(&format!("Start: IF_GOTO label: {}", label));
         self.write_pop("R13", 0);
         self.write_code("D=M");
-        self.write_code(&format!("@{}.{}", self.file_name, label));
-        self.write_code("D;JGT");
+        self.write_code(&format!("@{}", label));
+        self.write_code("D;JNE");
         self.write_comment(&format!("End: IF_GOTO label: {}", label));
     }
 
     pub fn write_function(&mut self, fn_name: &str, n_vars: i32) {
         self.write_comment(&format!("Start: Function: {} n_vars: {}", fn_name, n_vars.to_string()));
 
-        self.write_label(&format!("{}.{}", self.file_name, fn_name));
+        self.write_label(&format!("{}", fn_name));
 
         (0..n_vars).for_each(|_| {
             self.write_push("constant", 0);
@@ -216,6 +216,7 @@ impl CodeWriter {
     }
 
     pub fn write_call(&mut self, fn_name: &str, n_args: i32) {
+        println!("Call: {}, {}", fn_name, n_args);
         self.write_comment(&format!("Start: Function-Call: {} n_args: {}", fn_name, n_args.to_string()));
 
         let ret_label = format!("{}$ret{}", fn_name, self.call_count);
@@ -228,22 +229,31 @@ impl CodeWriter {
             self.write_code(ptr);
             self.write_code("D=A");
             self.write_code("@SP");
+            self.write_code("A=M");
             self.write_code("M=D");
             self.increment_sp_by(1);
         });
 
-        // Set ARG to lately pushed arguments
+        // Set LCL ptr to SP
         self.write_code("@SP");
         self.write_code("D=M");
+        self.write_code("@LCL");
+        self.write_code("M=D");
+
+        // Set ARG to lately pushed arguments
         self.write_code(&format!("@{}", 5 + n_args));
+        self.write_code("D=D-A");
+        self.write_code("@ARG");
+        self.write_code("M=D");
+
+        // give control to function
+        self.write_goto(&format!("{}", fn_name));
 
         // put return Label
         self.write_label(&ret_label);
 
-        // give control to function
-        self.write_goto(&format!("{}.{}", self.file_name, fn_name));
-
         self.write_comment(&format!("End: Function-Call: {} n_args: {}", fn_name, n_args.to_string()));
+        self.write_empty_line();
     }
 
     pub fn write_return(&mut self) {
@@ -264,7 +274,12 @@ impl CodeWriter {
         self.write_code("M=D");
 
         // Set ARG0 to return value
-        self.write_pop("argument", 0);
+        self.write_code("@SP");
+        self.write_code("AM=M-1");
+        self.write_code("D=M");
+        self.write_code("@ARG");
+        self.write_code("A=M");
+        self.write_code("M=D");
 
         // Reposition SP for the caller
         self.write_code("@ARG");
@@ -274,6 +289,7 @@ impl CodeWriter {
 
 
         for (i, ptr) in ["@THAT", "@THIS", "@ARG", "@LCL"].iter().enumerate() {
+            self.write_comment(&format!("Reinitate {} at frame-{}", ptr, i));
             // Put LCL into D-Register
             self.write_code("@R13");
             self.write_code("D=M");
@@ -292,6 +308,7 @@ impl CodeWriter {
         self.write_code("0;JMP");
 
         self.write_comment(&format!("End: Function-Return"));
+        self.write_empty_line();
     }
 
 
@@ -307,8 +324,9 @@ impl CodeWriter {
         self.write_code("M=-1");
     }
 
-    pub fn write_bootstrap_code(&mut self) {
-        self.write_comment("Start: Bootstrap Code");
+    pub fn write_init_code(&mut self) {
+        self.write_empty_line();
+        self.write_comment("Start: Init Code");
 
         // Load 256 into SP
         self.write_code("@256");
@@ -318,7 +336,18 @@ impl CodeWriter {
 
         // call Sys.init
         self.write_call("Sys.init", 0);
-        self.write_comment("End: Bootstrap Code");
+        self.write_comment("End: Init Code");
+        self.write_empty_line();
+    }
+
+    pub fn write_exit_code(&mut self) {
+        self.write_comment("Start: Exit Code");
+
+        self.write_label("EXIT");
+        self.write_goto("EXIT");
+
+        self.write_comment("End: Exit Code");
+        self.write_empty_line();
     }
 
     fn increment_sp_by(&mut self, val: i32) {
@@ -334,7 +363,7 @@ impl CodeWriter {
     }
 
     fn write_comment(&mut self, comment: &str) {
-        self.write(&format!("// {} \n", comment));
+        self.write(&format!("// {}", comment));
     }
 
     fn write_code(&mut self, asm_command: &str) {

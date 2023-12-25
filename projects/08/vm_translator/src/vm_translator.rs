@@ -21,10 +21,16 @@ impl VMTranslator {
     }
 
     pub fn translate(&mut self) {
-        if self.path.is_dir() { self.translate_folder(); }
+        if self.path.is_dir() { 
+            self.translate_folder(); 
+            let mut new_out_path = self.path.to_path_buf();
+            new_out_path.push(self.path.file_stem().unwrap().to_str().unwrap());
+            self.path = new_out_path.into();
+        }
         else if self.path.is_file() { self.translate_file(&self.path.clone()); }
 
 
+        self.code_writer.write_exit_code();
         let _res = self.code_writer.save(&self.path);
     }
 
@@ -32,7 +38,7 @@ impl VMTranslator {
         println!("Translating folder '{}'", self.path.display());
         let paths = self.path.read_dir().expect("Could not read folder");
 
-        self.code_writer.write_bootstrap_code();
+        self.code_writer.write_init_code();
 
         for path in paths {
             let file_path = path.unwrap().path();
