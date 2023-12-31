@@ -16,7 +16,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -25,7 +25,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -34,7 +34,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -43,7 +43,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -162,29 +162,17 @@ A=D-A
 D=M
 @R14
 M=D
-// Start: Pop command 'segment: argument index: 0'
-// Start: Increment SP by -1
 @SP
-M=M-1
-// End: Increment SP by -1
+AM=M-1
+D=M
 @ARG
 A=M
-D=A
-@R15
 M=D
-@SP
-A=M
-D=M
-@R15
-A=M
-M=D
-// End: Pop command 'segment: argument index: 0'
-
-
 @ARG
 D=M
 @SP
 M=D+1
+// Reinitate @THAT at frame-0
 @R13
 D=M
 @1
@@ -192,6 +180,7 @@ A=D-A
 D=M
 @THAT
 M=D
+// Reinitate @THIS at frame-1
 @R13
 D=M
 @2
@@ -199,6 +188,7 @@ A=D-A
 D=M
 @THIS
 M=D
+// Reinitate @ARG at frame-2
 @R13
 D=M
 @3
@@ -206,6 +196,7 @@ A=D-A
 D=M
 @ARG
 M=D
+// Reinitate @LCL at frame-3
 @R13
 D=M
 @4
@@ -315,29 +306,17 @@ A=D-A
 D=M
 @R14
 M=D
-// Start: Pop command 'segment: argument index: 0'
-// Start: Increment SP by -1
 @SP
-M=M-1
-// End: Increment SP by -1
+AM=M-1
+D=M
 @ARG
 A=M
-D=A
-@R15
 M=D
-@SP
-A=M
-D=M
-@R15
-A=M
-M=D
-// End: Pop command 'segment: argument index: 0'
-
-
 @ARG
 D=M
 @SP
 M=D+1
+// Reinitate @THAT at frame-0
 @R13
 D=M
 @1
@@ -345,6 +324,7 @@ A=D-A
 D=M
 @THAT
 M=D
+// Reinitate @THIS at frame-1
 @R13
 D=M
 @2
@@ -352,6 +332,7 @@ A=D-A
 D=M
 @THIS
 M=D
+// Reinitate @ARG at frame-2
 @R13
 D=M
 @3
@@ -359,6 +340,7 @@ A=D-A
 D=M
 @ARG
 M=D
+// Reinitate @LCL at frame-3
 @R13
 D=M
 @4
@@ -466,29 +448,17 @@ A=D-A
 D=M
 @R14
 M=D
-// Start: Pop command 'segment: argument index: 0'
-// Start: Increment SP by -1
 @SP
-M=M-1
-// End: Increment SP by -1
+AM=M-1
+D=M
 @ARG
 A=M
-D=A
-@R15
 M=D
-@SP
-A=M
-D=M
-@R15
-A=M
-M=D
-// End: Pop command 'segment: argument index: 0'
-
-
 @ARG
 D=M
 @SP
 M=D+1
+// Reinitate @THAT at frame-0
 @R13
 D=M
 @1
@@ -496,6 +466,7 @@ A=D-A
 D=M
 @THAT
 M=D
+// Reinitate @THIS at frame-1
 @R13
 D=M
 @2
@@ -503,6 +474,7 @@ A=D-A
 D=M
 @THIS
 M=D
+// Reinitate @ARG at frame-2
 @R13
 D=M
 @3
@@ -510,6 +482,7 @@ A=D-A
 D=M
 @ARG
 M=D
+// Reinitate @LCL at frame-3
 @R13
 D=M
 @4
@@ -619,29 +592,17 @@ A=D-A
 D=M
 @R14
 M=D
-// Start: Pop command 'segment: argument index: 0'
-// Start: Increment SP by -1
 @SP
-M=M-1
-// End: Increment SP by -1
+AM=M-1
+D=M
 @ARG
 A=M
-D=A
-@R15
 M=D
-@SP
-A=M
-D=M
-@R15
-A=M
-M=D
-// End: Pop command 'segment: argument index: 0'
-
-
 @ARG
 D=M
 @SP
 M=D+1
+// Reinitate @THAT at frame-0
 @R13
 D=M
 @1
@@ -649,6 +610,7 @@ A=D-A
 D=M
 @THAT
 M=D
+// Reinitate @THIS at frame-1
 @R13
 D=M
 @2
@@ -656,6 +618,7 @@ A=D-A
 D=M
 @THIS
 M=D
+// Reinitate @ARG at frame-2
 @R13
 D=M
 @3
@@ -663,6 +626,7 @@ A=D-A
 D=M
 @ARG
 M=D
+// Reinitate @LCL at frame-3
 @R13
 D=M
 @4
@@ -719,7 +683,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -728,7 +692,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -737,7 +701,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -746,7 +710,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -823,7 +787,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -832,7 +796,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -841,7 +805,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -850,7 +814,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -901,7 +865,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -910,7 +874,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -919,7 +883,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -928,7 +892,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -961,7 +925,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -970,7 +934,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -979,7 +943,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -988,7 +952,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D

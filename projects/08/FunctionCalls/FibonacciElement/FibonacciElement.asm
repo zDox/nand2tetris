@@ -16,7 +16,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -25,7 +25,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -34,7 +34,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -43,7 +43,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -142,14 +142,16 @@ M=D
 D=M
 @R14
 D=M-D
-@100
+@c_0_true
 D;JLT
 @R14
 M=0
-@102
-0; JMP
+@c_0_end
+0;JMP
+(c_0_true)
 @R14
 M=-1
+(c_0_end)
 // Start: Push command 'segment: R14 index: 0'
 @R14
 D=M
@@ -360,7 +362,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -369,7 +371,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -378,7 +380,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -387,7 +389,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -504,7 +506,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -513,7 +515,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -522,7 +524,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -531,7 +533,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -698,7 +700,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @LCL
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -707,7 +709,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @ARG
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -716,7 +718,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THIS
-D=A
+D=M
 @SP
 A=M
 M=D
@@ -725,7 +727,7 @@ M=D
 M=M+1
 // End: Increment SP by +1
 @THAT
-D=A
+D=M
 @SP
 A=M
 M=D

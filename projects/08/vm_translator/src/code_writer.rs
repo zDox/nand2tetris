@@ -13,6 +13,7 @@ pub struct CodeWriter {
     line_number: u32,
     static_table: SymbolTable,
     call_count: u32,
+    comparison_count: u32,
 }
 
 impl CodeWriter {
@@ -22,6 +23,7 @@ impl CodeWriter {
             output: String::from(""), 
             line_number: 0, 
             call_count: 0, 
+            comparison_count: 0, 
             static_table: SymbolTable::new(15)
         }
     }
@@ -223,11 +225,19 @@ impl CodeWriter {
         self.call_count += 1;
 
         // Do i need to push a 0 value to reserve a mem slot for the return value if n_args==0 ?
+        //
+
+        self.write_code(&format!("@{}", ret_label));
+        self.write_code("D=A");
+        self.write_code("@SP");
+        self.write_code("A=M");
+        self.write_code("M=D");
+        self.increment_sp_by(1);
         
         // push return_address, LCL, ARG, THIS, THAT onto the stack 
-        [&format!("@{}", ret_label), "@LCL", "@ARG", "@THIS", "@THAT"].iter().for_each(|ptr| {
+        ["@LCL", "@ARG", "@THIS", "@THAT"].iter().for_each(|ptr| {
             self.write_code(ptr);
-            self.write_code("D=A");
+            self.write_code("D=M");
             self.write_code("@SP");
             self.write_code("A=M");
             self.write_code("M=D");
@@ -247,7 +257,7 @@ impl CodeWriter {
         self.write_code("M=D");
 
         // give control to function
-        self.write_goto(&format!("{}", fn_name));
+        self.write_goto(fn_name);
 
         // put return Label
         self.write_label(&ret_label);
@@ -314,14 +324,16 @@ impl CodeWriter {
 
     fn write_comparison(&mut self, jump_cond: &str) {
         self.write_code("D=M-D");
-        self.write_code(&format!("@{}", self.line_number+6));
+        self.write_code(&format!("@c_{}_true", self.comparison_count));
         self.write_code(&format!("D;{}", jump_cond));
         self.write_code("@R14");
         self.write_code("M=0");
-        self.write_code(&format!("@{}", self.line_number+4));
-        self.write_code("0; JMP");
+        self.write_goto(&format!("c_{}_end", self.comparison_count));
+        self.write_label(&format!("c_{}_true", self.comparison_count));
         self.write_code("@R14");
         self.write_code("M=-1");
+        self.write_label(&format!("c_{}_end", self.comparison_count));
+        self.comparison_count += 1;
     }
 
     pub fn write_init_code(&mut self) {
