@@ -1,8 +1,8 @@
 use std::path::Path;
 
-#[path = "tokanizer.rs"]
-mod tokanizer;
-use tokanizer::{ Tokenizer, Token };
+#[path = "tokenizer.rs"]
+mod tokenizer;
+use tokenizer::{ Tokenizer, Token };
 
 pub struct JackAnalyzer {
     path: Box<Path>,
@@ -38,7 +38,7 @@ impl JackAnalyzer {
         let mut tokenizer = Tokenizer::new(file_path).expect("File has wrong Filetype: expeceted .jack");
         while tokenizer.has_more_tokens() {
             tokenizer.advance();
-            println!("Next Token: {}", tokenizer.token_type());
+            println!("{}", tokenizer.token_type().to_xml());
         }
         println!("Translation of file '{}' completed", file_path.file_name().unwrap().to_str().unwrap());
     }
