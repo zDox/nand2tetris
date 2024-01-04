@@ -19,7 +19,7 @@ impl JackAnalyzer {
         if self.path.is_dir() { 
             self.compile_folder(); 
         }
-        else if self.path.is_file() { self.compile_file(&self.path); } 
+        else if self.path.is_file() { self.compile_file(&self.path.clone()); } 
     }
 
     fn compile_folder(&mut self) {
@@ -35,8 +35,11 @@ impl JackAnalyzer {
     }
 
     fn compile_file(&mut self, file_path: &Path) {
-        let mut tokens = Tokanizer::run(file_path).expect("File has wrong Filetype: expeceted .jack");
-        Tokenizer::save(tokens);
+        let mut tokenizer = Tokenizer::new(file_path).expect("File has wrong Filetype: expeceted .jack");
+        while tokenizer.has_more_tokens() {
+            tokenizer.advance();
+            println!("Next Token: {}", tokenizer.token_type());
+        }
         println!("Translation of file '{}' completed", file_path.file_name().unwrap().to_str().unwrap());
     }
 }
