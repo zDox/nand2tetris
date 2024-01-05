@@ -1,9 +1,12 @@
 use std::path::Path;
-use std::fs::write;
 
 #[path = "tokenizer.rs"]
 mod tokenizer;
 use tokenizer::{ Tokenizer, Token };
+
+#[path = "compilation_engine.rs"]
+mod compilation_engine;
+use compilation_engine::CompilationEngine;
 
 pub struct JackAnalyzer {
     path: Box<Path>,
@@ -37,21 +40,22 @@ impl JackAnalyzer {
 
     fn compile_file(&mut self, file_path: &Path) {
         let mut tokenizer = Tokenizer::new(file_path).expect("File has wrong Filetype: expeceted .jack");
-        let mut content = String::from("");
-        content.push_str("<tokens>\n");
+        let mut tokens: Vec<Token> = vec!();
 
         while tokenizer.has_more_tokens() {
             tokenizer.advance();
             println!("{}", tokenizer.token_type().to_xml());
-            content.push_str(&format!("{}\n", tokenizer.token_type().to_xml()));
-            
+            tokens.push(tokenizer.token_type().clone());
         }
 
-        content.push_str("</tokens>");
+
+
         let mut path_buf = file_path.to_path_buf();
-        path_buf.set_file_name(&format!("{}TMine.xml", file_path.file_stem().unwrap().to_str().unwrap()));
+        path_buf.set_file_name(&format!("{}Mine.xml", file_path.file_stem().unwrap().to_str().unwrap()));
+        let mut compilation_engine = CompilationEngine::new(tokens);
         
-        write(path_buf, content).expect("Couldnt write xml file");
-        println!("Translation of file '{}' completed", file_path.file_name().unwrap().to_str().unwrap());
+        compilation_engine.run();
+        compilation_engine.save(&path_buf);
+        println!("Compilation of file '{}' completed", file_path.file_name().unwrap().to_str().unwrap());
     }
 }

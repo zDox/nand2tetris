@@ -16,6 +16,7 @@ static SYMBOLS: [char; 19] = [
     '=', '~',
 ];
 
+#[derive(Clone)]
 pub enum Token {
     Keyword(String),
     Symbol(char),
