@@ -44,7 +44,6 @@ impl JackAnalyzer {
 
         while tokenizer.has_more_tokens() {
             tokenizer.advance();
-            println!("{}", tokenizer.token_type().to_xml());
             tokens.push(tokenizer.token_type().clone());
         }
 
