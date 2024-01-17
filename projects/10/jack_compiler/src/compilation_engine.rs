@@ -166,27 +166,118 @@ impl CompilationEngine {
     }
 
     fn compile_subroutine_body(&mut self) {
+        self.eat(&Token::Symbol('{'));
+
+        
+        while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Keyword("var".to_string())) {
+            self.compile_var_dec();
+        }
+
+        self.compile_statements();
+
+        self.eat(&Token::Symbol('}'));
     }
 
     fn compile_var_dec(&mut self) {
+
+        self.eat(&Token::Keyword("var".to_string())); 
+        self.eat_tokens(vec!(&Token::Keyword("boolean".to_string()), &Token::Keyword("int".to_string()), &Token::Keyword("char".to_string()))); 
+        self.eat_independent(&Token::Identifier(String::from("")));
+
+        while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
+            self.eat(&Token::Symbol(','));
+            self.eat_independent(&Token::Identifier(String::from("")));
+        }
+
+        self.eat(&Token::Symbol(';'));
     }
 
     fn compile_statements(&mut self) {
+        while self.peek().is_some_and(|next_token: &Token| next_token != &Token::Keyword("return".to_string())) {
+            let next_token = self.peek().expect("Ran out of tokens");
+            if let Token::Keyword(keyword) = next_token{
+                match keyword.as_str(){
+                    "let" => self.compile_let(),
+                    "if" => self.compile_if(),
+                    "while" => self.compile_while(),
+                    "do" => self.compile_do(),
+                    _ => (),
+                }
+            }
+        }
+
+        self.compile_return();
     }
 
     fn compile_let(&mut self) {
+        self.eat(&Token::Keyword("let".to_string())); 
+        self.eat_independent(&Token::Identifier(String::from("")));
+
+        if self.peek().is_some_and(|next_token| next_token == &Token::Symbol('[')) {
+            self.eat(&Token::Symbol('['));
+            self.compile_expression();
+            self.eat(&Token::Symbol(']'));
+        }
+
+        self.eat(&Token::Symbol('='));
+        self.compile_expression();
+        self.eat(&Token::Symbol(';'));
     }
 
     fn compile_if(&mut self) {
+        self.eat(&Token::Keyword("if".to_string())); 
+        self.eat(&Token::Symbol('('));
+        self.compile_expression();
+        self.eat(&Token::Symbol(')'));
+        self.eat(&Token::Symbol('{'));
+        self.compile_statements();
+        self.eat(&Token::Symbol('}'));
+
+        // else clause
+        if self.peek().is_some_and(|next_token| next_token == &Token::Keyword("else".to_string())) {
+            self.eat(&Token::Keyword("else".to_string())); 
+            self.eat(&Token::Symbol('{'));
+            self.compile_statements();
+            self.eat(&Token::Symbol('}'));
+        }
     }
 
     fn compile_while(&mut self) {
+        self.eat(&Token::Keyword("while".to_string())); 
+
+        self.eat(&Token::Symbol('('));
+        self.compile_expression();
+        self.eat(&Token::Symbol(')'));
+
+        self.eat(&Token::Symbol('{'));
+        self.compile_statements();
+        self.eat(&Token::Symbol('}'));
     }
 
     fn compile_do(&mut self) {
+        self.eat(&Token::Keyword("do".to_string())); 
+        self.eat_independent(&Token::Identifier(String::from("")));
+
+        // if member subroutine call
+        if self.peek().is_some_and(|next_token| next_token == &Token::Symbol('.')) {
+            self.eat(&Token::Symbol('.'));
+            self.eat_independent(&Token::Identifier(String::from("")));
+        }
+
+        self.eat(&Token::Symbol('('));
+        self.compile_expression_list();
+        self.eat(&Token::Symbol(')'));
+
+        self.eat(&Token::Symbol(';'));
     }
 
     fn compile_return(&mut self) {
+        self.eat(&Token::Keyword("return".to_string())); 
+
+        if self.peek().is_some_and(|next_token| next_token != &Token::Symbol(';')) {
+            self.compile_expression();
+        }
+        self.eat(&Token::Symbol(';'));
     }
 
     fn compile_expression(&mut self) {
