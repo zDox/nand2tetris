@@ -16,7 +16,7 @@ static SYMBOLS: [char; 19] = [
     '=', '~',
 ];
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Token {
     Keyword(String),
     Symbol(char),
@@ -57,6 +57,18 @@ impl Token {
             Token::StringConstant(s) => format!("<stringConstant> {} </stringConstant>",s),
             Token::Identifier(s) => format!("<identifier> {} </identifier>",s),
             Token::None => "".to_string(),
+        }
+    }
+
+    pub fn equals_type(&self, token2: &Token) -> bool {
+        match (self, token2) {
+            (Token::Keyword(_), Token::Keyword(_))
+            | (Token::Symbol(_), Token::Symbol(_))
+            | (Token::IntegerConstant(_), Token::IntegerConstant(_))
+            | (Token::StringConstant(_), Token::StringConstant(_))
+            | (Token::Identifier(_), Token::Identifier(_))
+            | (Token::None, Token::None) => true,
+            _ => false,
         }
     }
 }

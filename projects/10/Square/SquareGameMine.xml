@@ -1,0 +1,17 @@
+<class>
+ <keyword> class </keyword>
+ <symbol> { </symbol>
+ <classVarDec>
+  <keyword> field </keyword>
+  <identifier> square </identifier>
+  <symbol> ; </symbol>
+ <classVarDec>
+  <keyword> field </keyword>
+  <keyword> int </keyword>
+  <identifier> direction </identifier>
+  <symbol> ; </symbol>
+ <keyword> constructor </keyword>
+ <identifier> new </identifier>
+ <symbol> ( </symbol>
+ <symbol> ) </symbol>
+</class>
