@@ -1,6 +1,7 @@
 use std::{ fs::write, path::Path };
-
 use super::tokenizer::Token;
+
+
 
 pub struct CompilationEngine {
     indent: usize,
@@ -47,18 +48,12 @@ impl CompilationEngine {
                 self.write_line(&(copy.to_xml()));
             }
             else {
-                panic!("Next token is not expected");
+                panic!("Next token {} is not expected", token);
             }
 
         }
         else {
-            panic!("Next token is not expected");
-        }
-    }
-
-    fn eat_keyword(&mut self, keyword: Option<&str>) {
-        if let Some(keyword) = keyword {
-
+            panic!("Next token None is not expected");
         }
     }
 
@@ -70,27 +65,27 @@ impl CompilationEngine {
                 self.write_line(&(copy.to_xml()));
             }
             else {
-                panic!("Next token is not expected");
+                panic!("Next token {} is not expected", token);
             }
         }
         else {
-            panic!("Next token is not expected");
+            panic!("Next token None is not expected");
         }
     }
 
 
-    fn eat_tokens(&mut self, to_eat_tokens: Vec<&Token>) {
+    fn eat_tokens(&mut self, to_eat_tokens: &Vec<Token>) {
         if let Some(token) = self.next(){
             if to_eat_tokens.contains(&token) {
                 let copy = token.clone();
                 self.write_line(&(copy.to_xml()));
             }
             else {
-                panic!("Next token is not expected");
+                panic!("Next token {} is not expected", token);
             }
         }
         else {
-            panic!("Next token is not expected");
+            panic!("Next token None is not expected");
         }
     }
 
@@ -121,9 +116,8 @@ impl CompilationEngine {
                                       [Token::Keyword("static".to_string()), Token::Keyword("field".to_string())].contains(next_token)) {
             self.compile_class_var_dec();
         }
-        while self.peek().is_some_and(|next_token| 
-                                      [Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), 
-                                      Token::Keyword("constructor".to_string())].contains(next_token)) {
+        while self.peek().is_some_and(|next_token| vec!(
+    Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string())).contains(&next_token)) {
             self.compile_subroutine();
         }
         self.indent -= 1;
@@ -134,8 +128,8 @@ impl CompilationEngine {
         self.write_tag("classVarDec");
         self.indent += 1;
 
-        self.eat_tokens(vec!(&Token::Keyword("static".to_string()), &Token::Keyword("field".to_string()))); 
-        self.eat_tokens(vec!(&Token::Keyword("boolean".to_string()), &Token::Keyword("int".to_string()), &Token::Keyword("char".to_string()))); 
+        self.eat_tokens(&vec!(Token::Keyword("field".to_string()), Token::Keyword("static".to_string()))); 
+        self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
         self.eat_independent(&Token::Identifier(String::from("")));
 
         while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
@@ -152,12 +146,20 @@ impl CompilationEngine {
         self.indent += 1;
         self.write_tag("subroutineDec");
 
-        self.eat_tokens(vec!(&Token::Keyword("constructor".to_string()), 
-                             &Token::Keyword("function".to_string()), 
-                             &Token::Keyword("method".to_string()))); 
+        self.eat_tokens(&vec!(
+    Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string()))); 
 
-        self.eat_tokens(vec!(&Token::Keyword("void".to_string()), 
-                             &Token::Keyword("boolean".to_string()), &Token::Keyword("int".to_string()), &Token::Keyword("char".to_string()))); 
+         
+        // if type consume it else its an identifier for a class type
+        if self.peek().is_some_and(|next_token| [Token::Keyword("void".to_string()), 
+    Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(&next_token)) {
+            self.eat_tokens(&vec!(Token::Keyword("void".to_string()), 
+    Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())));
+        }
+        else {
+            self.eat_independent(&Token::Identifier(String::from("")));
+        }
+        
 
         self.eat_independent(&Token::Identifier(String::from("")));
 
@@ -175,10 +177,9 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('('));
 
         
-        while self.peek().is_some_and(|next_token: &Token| [Token::Keyword("boolean".to_string()), Token::Keyword("boolean".to_string()), 
-                                                            Token::Keyword("char".to_string())].contains(next_token)) {
+        while self.peek().is_some_and(|next_token: &Token| vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())).contains(&next_token)) {
 
-            self.eat_tokens(vec!(&Token::Keyword("boolean".to_string()), &Token::Keyword("int".to_string()), &Token::Keyword("char".to_string()))); 
+            self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
             self.eat_independent(&Token::Identifier(String::from("")));
 
             if self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')){
@@ -216,7 +217,7 @@ impl CompilationEngine {
     fn compile_var_dec(&mut self) {
 
         self.eat(&Token::Keyword("var".to_string())); 
-        self.eat_tokens(vec!(&Token::Keyword("boolean".to_string()), &Token::Keyword("int".to_string()), &Token::Keyword("char".to_string()))); 
+        self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
         self.eat_independent(&Token::Identifier(String::from("")));
 
         while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
