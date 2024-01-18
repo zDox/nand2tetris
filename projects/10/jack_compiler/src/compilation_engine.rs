@@ -48,12 +48,12 @@ impl CompilationEngine {
                 self.write_line(&(copy.to_xml()));
             }
             else {
-                panic!("Next token {} is not expected", token);
+                panic!("Next token '{}' is not expected. Expected '{}'.", token, to_eat_token);
             }
 
         }
         else {
-            panic!("Next token None is not expected");
+            panic!("Next token None is not expected. Expected '{}'.", to_eat_token);
         }
     }
 
@@ -65,11 +65,11 @@ impl CompilationEngine {
                 self.write_line(&(copy.to_xml()));
             }
             else {
-                panic!("Next token {} is not expected", token);
+                panic!("Next token '{}' is not expected. Expected '{}'.", token, to_eat_token);
             }
         }
         else {
-            panic!("Next token None is not expected");
+            panic!("Next token None is not expected. Expected '{}'.", to_eat_token);
         }
     }
 
@@ -81,7 +81,7 @@ impl CompilationEngine {
                 self.write_line(&(copy.to_xml()));
             }
             else {
-                panic!("Next token {} is not expected", token);
+                panic!("Next token '{}' is not expected", token);
             }
         }
         else {
@@ -236,7 +236,7 @@ impl CompilationEngine {
                     "let" => self.compile_let(),
                     "if" => self.compile_if(),
                     "while" => self.compile_while(),
-                    "do" => self.compile_do(),
+                    "do" => self.compile_do(Some(true)),
                     _ => (),
                 }
             }
@@ -290,8 +290,10 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('}'));
     }
 
-    fn compile_do(&mut self) {
-        self.eat(&Token::Keyword("do".to_string())); 
+    fn compile_do(&mut self, with_do: Option<bool>) {
+        if with_do.is_some_and(|val| val) {
+            self.eat(&Token::Keyword("do".to_string())); 
+        }
         self.eat_independent(&Token::Identifier(String::from("")));
 
         // if member subroutine call
@@ -304,7 +306,9 @@ impl CompilationEngine {
         self.compile_expression_list();
         self.eat(&Token::Symbol(')'));
 
-        self.eat(&Token::Symbol(';'));
+        if with_do.is_some_and(|val| val) {
+            self.eat(&Token::Symbol(';'));
+        }
     }
 
     fn compile_return(&mut self) {
@@ -317,11 +321,62 @@ impl CompilationEngine {
     }
 
     fn compile_expression(&mut self) {
+        self.compile_term();
+        while self.peek().is_some_and(|next_token| [
+                                      Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), 
+                                      Token::Symbol('&'), Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'),
+                                      Token::Symbol('=')]
+                                      .contains(next_token)) {
+            self.eat_tokens(&vec!(
+                    Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), 
+                    Token::Symbol('&'), Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'),
+                    Token::Symbol('=')));
+            self.compile_term();
+        }
     }
 
     fn compile_term(&mut self) {
+        let next_token: Token = self.peek().unwrap().clone();
+        match next_token {
+            Token::Keyword(keyword) => self.eat(&Token::Keyword(keyword.to_string())),
+            Token::Symbol('(') => {
+                self.eat(&Token::Symbol('('));
+                self.compile_expression();
+                self.eat(&Token::Symbol(')'));
+            }
+            next_token if [Token::Symbol('-'), Token::Symbol('~')].contains(&next_token) => self.eat(&next_token),
+            Token::IntegerConstant(integer) => self.eat(&Token::IntegerConstant(integer)),
+            Token::StringConstant(string) => self.eat(&Token::StringConstant(string)),
+            Token::Identifier(identifier) => {
+                let look_ahead_token = self.next().unwrap().clone();
+                self.index -= 1;
+                match look_ahead_token {
+                    // Array access
+                    Token::Symbol('[') => {
+                        self.eat(&Token::Identifier(identifier));
+                        self.eat(&Token::Symbol('['));
+                        self.compile_expression();
+                        self.eat(&Token::Symbol(']'));
+                    }
+                    // subroutine call
+                    Token::Symbol('(') | Token::Symbol('.') => self.compile_do(None),
+                    
+                    Token::None => unreachable!(),
+
+                    // Else should be a variable
+                    _ => self.eat(&Token::Identifier(identifier)),
+                }
+            },
+            Token::None => (),
+            _ => println!("Might be in infintive loop"),
+        }
     }
 
     fn compile_expression_list(&mut self) {
+        self.compile_expression();
+        while self.peek().is_some_and(|next_token| next_token == &Token::Symbol(',')) {
+            self.eat(&Token::Symbol(','));
+            self.compile_expression();
+        }
     }
 }
