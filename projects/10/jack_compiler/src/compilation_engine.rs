@@ -25,8 +25,9 @@ impl CompilationEngine {
     }
 
     fn write_line(&mut self, line: &str) {
-        self.output.push_str(&(" ".repeat(self.indent) + &line + "\n"));
-        println!("{}", &(" ".repeat(self.indent) + &line + "\n"));
+        let line_str = &(" ".repeat(self.indent) + &line + "\n");
+        self.output.push_str(line_str);
+        println!("{}", line_str);
     }
 
     fn write_xml(&mut self, tag: &str, content: &str) {
@@ -35,9 +36,11 @@ impl CompilationEngine {
 
     fn write_tag(&mut self, tag: &str) {
         self.write_line(&format!("<{}>", tag));
+        self.indent += 1;
     }
 
     fn write_end_tag(&mut self, tag: &str) {
+        self.indent -= 1;
         self.write_line(&format!("</{}>", tag));
     }
 
@@ -106,7 +109,6 @@ impl CompilationEngine {
     fn compile_class(&mut self) {
         self.write_tag("class");
 
-        self.indent += 1;
 
         self.eat(&Token::Keyword("class".to_string()));
         self.eat_independent(&Token::Identifier(String::from("")));
@@ -120,16 +122,21 @@ impl CompilationEngine {
     Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string())).contains(&next_token)) {
             self.compile_subroutine();
         }
-        self.indent -= 1;
         self.write_end_tag("class");
     }
 
     fn compile_class_var_dec(&mut self) {
         self.write_tag("classVarDec");
-        self.indent += 1;
 
         self.eat_tokens(&vec!(Token::Keyword("field".to_string()), Token::Keyword("static".to_string()))); 
-        self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
+
+        if self.peek().is_some_and(|next| next.equals_type(&Token::Identifier("".to_string()))) {
+            self.eat_independent(&Token::Identifier(String::from("")));
+        }
+        else {
+            self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
+        }
+
         self.eat_independent(&Token::Identifier(String::from("")));
 
         while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
@@ -138,12 +145,10 @@ impl CompilationEngine {
         }
         self.eat(&Token::Symbol(';'));
         
-        self.indent -= 1;
         self.write_end_tag("classVarDec");
     }
 
     fn compile_subroutine(&mut self) {
-        self.indent += 1;
         self.write_tag("subroutineDec");
 
         self.eat_tokens(&vec!(
@@ -152,7 +157,8 @@ impl CompilationEngine {
          
         // if type consume it else its an identifier for a class type
         if self.peek().is_some_and(|next_token| [Token::Keyword("void".to_string()), 
-    Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(&next_token)) {
+                                   Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(&next_token)) {
+
             self.eat_tokens(&vec!(Token::Keyword("void".to_string()), 
     Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())));
         }
@@ -166,12 +172,10 @@ impl CompilationEngine {
         self.compile_parameter_list();
         self.compile_subroutine_body();
 
-        self.indent -= 1;
         self.write_end_tag("subroutineDec");
     }
 
     fn compile_parameter_list(&mut self) {
-        self.indent += 1;
         self.write_tag("parameterList");
 
         self.eat(&Token::Symbol('('));
@@ -192,12 +196,10 @@ impl CompilationEngine {
 
         self.eat(&Token::Symbol(')'));
 
-        self.indent -= 1;
         self.write_end_tag("parameterList");
     }
 
     fn compile_subroutine_body(&mut self) {
-        self.indent += 1;
         self.write_tag("subroutineBody");
 
         self.eat(&Token::Symbol('{'));
@@ -210,14 +212,21 @@ impl CompilationEngine {
 
         self.eat(&Token::Symbol('}'));
 
-        self.indent -= 1;
         self.write_end_tag("subroutineBody");
     }
 
     fn compile_var_dec(&mut self) {
+        self.write_tag("varDec");
 
         self.eat(&Token::Keyword("var".to_string())); 
-        self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
+
+        if self.peek().is_some_and(|next| next.equals_type(&Token::Identifier("".to_string()))) {
+            self.eat_independent(&Token::Identifier(String::from("")));
+        }
+        else {
+            self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
+        }
+
         self.eat_independent(&Token::Identifier(String::from("")));
 
         while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
@@ -226,10 +235,14 @@ impl CompilationEngine {
         }
 
         self.eat(&Token::Symbol(';'));
+
+        self.write_end_tag("varDec");
     }
 
     fn compile_statements(&mut self) {
-        while self.peek().is_some_and(|next_token: &Token| next_token != &Token::Keyword("return".to_string())) {
+        self.write_tag("statements");
+
+        while self.peek().is_some_and(|next_token: &Token| next_token.equals_type(&Token::Keyword("".to_string()))) {
             let next_token = self.peek().expect("Ran out of tokens");
             if let Token::Keyword(keyword) = next_token{
                 match keyword.as_str(){
@@ -237,15 +250,18 @@ impl CompilationEngine {
                     "if" => self.compile_if(),
                     "while" => self.compile_while(),
                     "do" => self.compile_do(Some(true)),
+                    "return" => self.compile_return(),
                     _ => (),
                 }
             }
         }
 
-        self.compile_return();
+        self.write_end_tag("statements");
     }
 
     fn compile_let(&mut self) {
+        self.write_tag("letStatement");
+
         self.eat(&Token::Keyword("let".to_string())); 
         self.eat_independent(&Token::Identifier(String::from("")));
 
@@ -258,9 +274,13 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('='));
         self.compile_expression();
         self.eat(&Token::Symbol(';'));
+
+        self.write_end_tag("letStatement");
     }
 
     fn compile_if(&mut self) {
+        self.write_tag("ifStatement");
+
         self.eat(&Token::Keyword("if".to_string())); 
         self.eat(&Token::Symbol('('));
         self.compile_expression();
@@ -276,9 +296,12 @@ impl CompilationEngine {
             self.compile_statements();
             self.eat(&Token::Symbol('}'));
         }
+        self.write_end_tag("ifStatement");
     }
 
     fn compile_while(&mut self) {
+        self.write_tag("whileStatement");
+
         self.eat(&Token::Keyword("while".to_string())); 
 
         self.eat(&Token::Symbol('('));
@@ -288,9 +311,13 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('{'));
         self.compile_statements();
         self.eat(&Token::Symbol('}'));
+
+        self.write_end_tag("whileStatement");
     }
 
     fn compile_do(&mut self, with_do: Option<bool>) {
+        self.write_tag("doStatement");
+
         if with_do.is_some_and(|val| val) {
             self.eat(&Token::Keyword("do".to_string())); 
         }
@@ -309,18 +336,25 @@ impl CompilationEngine {
         if with_do.is_some_and(|val| val) {
             self.eat(&Token::Symbol(';'));
         }
+        self.write_end_tag("doStatement");
     }
 
     fn compile_return(&mut self) {
+        self.write_tag("returnStatement");
+
         self.eat(&Token::Keyword("return".to_string())); 
 
         if self.peek().is_some_and(|next_token| next_token != &Token::Symbol(';')) {
             self.compile_expression();
         }
         self.eat(&Token::Symbol(';'));
+
+        self.write_end_tag("returnStatement");
     }
 
     fn compile_expression(&mut self) {
+        self.write_tag("expression");
+
         self.compile_term();
         while self.peek().is_some_and(|next_token| [
                                       Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), 
@@ -333,9 +367,13 @@ impl CompilationEngine {
                     Token::Symbol('=')));
             self.compile_term();
         }
+
+        self.write_end_tag("expression");
     }
 
     fn compile_term(&mut self) {
+        self.write_tag("term");
+
         let next_token: Token = self.peek().unwrap().clone();
         match next_token {
             Token::Keyword(keyword) => self.eat(&Token::Keyword(keyword.to_string())),
@@ -348,12 +386,11 @@ impl CompilationEngine {
             Token::IntegerConstant(integer) => self.eat(&Token::IntegerConstant(integer)),
             Token::StringConstant(string) => self.eat(&Token::StringConstant(string)),
             Token::Identifier(identifier) => {
+                self.eat(&Token::Identifier(identifier.clone()));
                 let look_ahead_token = self.next().unwrap().clone();
-                self.index -= 1;
                 match look_ahead_token {
                     // Array access
                     Token::Symbol('[') => {
-                        self.eat(&Token::Identifier(identifier));
                         self.eat(&Token::Symbol('['));
                         self.compile_expression();
                         self.eat(&Token::Symbol(']'));
@@ -370,13 +407,17 @@ impl CompilationEngine {
             Token::None => (),
             _ => println!("Might be in infintive loop"),
         }
+        self.write_end_tag("term");
     }
 
     fn compile_expression_list(&mut self) {
+        self.write_tag("expressionList");
+
         self.compile_expression();
         while self.peek().is_some_and(|next_token| next_token == &Token::Symbol(',')) {
             self.eat(&Token::Symbol(','));
             self.compile_expression();
         }
+        self.write_end_tag("expressionList");
     }
 }
