@@ -411,8 +411,7 @@ impl CompilationEngine {
                     _ => self.eat(&Token::Identifier(identifier)),
                 }
             },
-            Token::None => (),
-            _ => println!("Might be in infintive loop"),
+            _ => (),
         }
         self.write_end_tag("term");
     }
