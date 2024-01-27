@@ -25,7 +25,7 @@ impl CompilationEngine {
     }
 
     fn write_line(&mut self, line: &str) {
-        let line_str = &(" ".repeat(self.indent) + &line + "\n");
+        let line_str = &(" ".repeat(self.indent*2) + &line + "\n");
         self.output.push_str(line_str);
         println!("{}", line_str);
     }
@@ -122,6 +122,9 @@ impl CompilationEngine {
     Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string())).contains(&next_token)) {
             self.compile_subroutine();
         }
+
+        self.eat(&Token::Symbol('}'));
+
         self.write_end_tag("class");
     }
 
@@ -169,7 +172,10 @@ impl CompilationEngine {
 
         self.eat_independent(&Token::Identifier(String::from("")));
 
+        self.eat(&Token::Symbol('('));
         self.compile_parameter_list();
+        self.eat(&Token::Symbol(')'));
+
         self.compile_subroutine_body();
 
         self.write_end_tag("subroutineDec");
@@ -178,9 +184,7 @@ impl CompilationEngine {
     fn compile_parameter_list(&mut self) {
         self.write_tag("parameterList");
 
-        self.eat(&Token::Symbol('('));
 
-        
         while self.peek().is_some_and(|next_token: &Token| vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())).contains(&next_token)) {
 
             self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
@@ -193,8 +197,6 @@ impl CompilationEngine {
                 continue;
             }
         }
-
-        self.eat(&Token::Symbol(')'));
 
         self.write_end_tag("parameterList");
     }
@@ -316,9 +318,9 @@ impl CompilationEngine {
     }
 
     fn compile_do(&mut self, with_do: Option<bool>) {
-        self.write_tag("doStatement");
 
         if with_do.is_some_and(|val| val) {
+            self.write_tag("doStatement");
             self.eat(&Token::Keyword("do".to_string())); 
         }
         self.eat_independent(&Token::Identifier(String::from("")));
@@ -335,8 +337,8 @@ impl CompilationEngine {
 
         if with_do.is_some_and(|val| val) {
             self.eat(&Token::Symbol(';'));
+            self.write_end_tag("doStatement");
         }
-        self.write_end_tag("doStatement");
     }
 
     fn compile_return(&mut self) {
@@ -382,15 +384,20 @@ impl CompilationEngine {
                 self.compile_expression();
                 self.eat(&Token::Symbol(')'));
             }
-            next_token if [Token::Symbol('-'), Token::Symbol('~')].contains(&next_token) => self.eat(&next_token),
+            next_token if [Token::Symbol('-'), Token::Symbol('~')].contains(&next_token) => {
+                self.eat(&next_token);
+                self.compile_term();
+            }
             Token::IntegerConstant(integer) => self.eat(&Token::IntegerConstant(integer)),
             Token::StringConstant(string) => self.eat(&Token::StringConstant(string)),
             Token::Identifier(identifier) => {
-                self.eat(&Token::Identifier(identifier.clone()));
-                let look_ahead_token = self.next().unwrap().clone();
+                self.index += 1;
+                let look_ahead_token = self.peek().unwrap().clone();
+                self.index -= 1;
                 match look_ahead_token {
                     // Array access
                     Token::Symbol('[') => {
+                        self.eat(&Token::Identifier(identifier));
                         self.eat(&Token::Symbol('['));
                         self.compile_expression();
                         self.eat(&Token::Symbol(']'));
