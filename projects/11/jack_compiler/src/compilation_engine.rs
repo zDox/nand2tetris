@@ -1,6 +1,6 @@
 use std::{ fs::write, path::Path };
 use super::tokenizer::Token;
-use super::symbol_table::SymbolTable;
+use super::symbol_table::{ SymbolTable, SymbolKind };
 
 #[path = "vm_writer.rs"]
 mod vm_writer;
@@ -11,26 +11,31 @@ pub struct CompilationEngine {
     indent: usize,
     index: usize,
     tokens: Vec<Token>,
-    output: String,
+    writer: VMWriter,
+    class_scope: SymbolTable,
+    function_scope: SymbolTable,
 }
 
 impl CompilationEngine {
-    pub fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>, output_file: &Path) -> Self {
         Self { 
             indent: 0,
             index: 0,
             tokens,
-            output: String::from(""), 
+            writer: VMWriter::new(output_file),
+            class_scope: SymbolTable::new(),
+            function_scope: SymbolTable::new(),
         }
     }
 
-    pub fn save(&self, file_path: &Path) {
-        write(file_path, &self.output).expect("Could not write output of CompilationEngine");
+    pub fn run(&mut self) {
+        self.compile_class();
+        self.writer.close();
     }
 
     fn write_line(&mut self, line: &str) {
         let line_str = &(" ".repeat(self.indent*2) + &line + "\n");
-        self.output.push_str(line_str);
+        self..push_str(line_str);
         println!("{}", line_str);
     }
 
@@ -65,11 +70,11 @@ impl CompilationEngine {
     }
 
 
-    fn eat_independent(&mut self, to_eat_token: &Token) {
+    fn eat_independent(&mut self, to_eat_token: &Token) -> &Token{
         if let Some(token) = self.next(){
             if token.equals_type(to_eat_token){
                 let copy = token.clone();
-                self.eat(&copy);
+                return self.eat(&copy);
             }
             else {
                 panic!("Next token '{}' is not expected. Expected '{}'.", token, to_eat_token);
@@ -81,11 +86,11 @@ impl CompilationEngine {
     }
 
 
-    fn eat_tokens(&mut self, to_eat_tokens: &Vec<Token>) {
+    fn eat_tokens(&mut self, to_eat_tokens: &Vec<Token>) -> &Token{
         if let Some(token) = self.peek(){
             if to_eat_tokens.contains(&token) {
                 let copy = token.clone();
-                self.eat(&copy);
+                return self.eat(&copy);
             }
             else {
                 panic!("Next token '{}' is not expected", token);
@@ -106,9 +111,6 @@ impl CompilationEngine {
         next
     }
 
-    pub fn run(&mut self) {
-        self.compile_class();
-    }
 
     fn compile_class(&mut self) {
         self.write_tag("class");
@@ -136,6 +138,7 @@ impl CompilationEngine {
         self.write_tag("classVarDec");
 
         self.eat_tokens(&vec!(Token::Keyword("field".to_string()), Token::Keyword("static".to_string()))); 
+        self.class_scope.define(SymbolKind::
 
         if self.peek().is_some_and(|next| next.equals_type(&Token::Identifier("".to_string()))) {
             self.eat_independent(&Token::Identifier(String::from("")));

@@ -35,10 +35,19 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    fn reset() {
+    pub fn new() -> Self {
+        Self {
+            table: HashMap::new(),
+            var_count_map: HashMap::new(),
+        }
     }
 
-    fn define(&mut self, name: &str, symbol_type: &str, kind: &SymbolKind) {
+    pub fn reset(&mut self) {
+        self.table.clear();
+        self.var_count_map.clear();
+    }
+
+    pub fn define(&mut self, name: &str, symbol_type: &str, kind: &SymbolKind) {
         let var_count: &mut u32 = self.var_count_map.entry(*kind).or_insert(0);
         *var_count += 1;
 
@@ -51,15 +60,15 @@ impl SymbolTable {
                           });
     }
 
-    fn var_count(&mut self, kind: &SymbolKind) -> u32 {
+    pub fn var_count(&mut self, kind: &SymbolKind) -> u32 {
         *self.var_count_map.entry(*kind).or_insert(0)
     }
 
-    fn type_of(&self, name: &str) -> Option<&str> {
+    pub fn type_of(&self, name: &str) -> Option<&str> {
         self.table.get(name).and_then(|val| Some(val.name.as_str()))
     }
 
-    fn index_of(&self, name: &str) -> Option<u32> {
+    pub fn index_of(&self, name: &str) -> Option<u32> {
         self.table.get(name).and_then(|val| Some(val.index))
     }
 }

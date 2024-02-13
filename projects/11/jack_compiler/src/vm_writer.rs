@@ -1,4 +1,7 @@
-use std::fs::write;
+use std::{
+    fs::write,
+    path::{Path, PathBuf},
+};
 
 pub enum Segment {
     ARGUMENT,
@@ -55,59 +58,59 @@ impl ArithmeticCommand {
 
 
 pub struct VMWriter {
-    file_name: String,
+    file_path: PathBuf,
     output: String,
 }
 
 impl VMWriter {
-    fn new(file_name: &str) -> Self{
+    pub fn new(output_path: &Path) -> Self{
         Self {
-            file_name: file_name.to_string(),
+            file_path: output_path.to_path_buf(),
             output: "".to_string(),
         }
     }
 
-    fn close(&self) {
-        write(&self.file_name, &self.output).expect("Could not write file");
+    pub fn close(&self) {
+        write(&self.file_path, &self.output).expect("Could not write file");
     }
 
-    fn write(&mut self, line: &str) {
+    pub fn write(&mut self, line: &str) {
         self.output.push_str(&(line.to_string() + "\n"));
     }
 
-    fn write_push(&mut self, segment: &Segment, index: u32) {
+    pub fn write_push(&mut self, segment: &Segment, index: u32) {
         self.write(&format!("push {} {}", segment.as_str(), index));
     }
 
-    fn write_pop(&mut self, segment: &Segment, index: u32) {
+    pub fn write_pop(&mut self, segment: &Segment, index: u32) {
         self.write(&format!("pop {} {}", segment.as_str(), index));
     }
 
-    fn write_arithmetic(&mut self, command: &ArithmeticCommand) {
+    pub fn write_arithmetic(&mut self, command: &ArithmeticCommand) {
         self.write(command.as_str());
     }
 
-    fn write_label(&mut self, label: &str) {
+    pub fn write_label(&mut self, label: &str) {
         self.write(&format!("label {}", label));
     }
     
-    fn write_goto(&mut self, label: &str) {
+    pub fn write_goto(&mut self, label: &str) {
         self.write(&format!("goto {}", label));
     }
 
-    fn write_if(&mut self, label: &str) {
+    pub fn write_if(&mut self, label: &str) {
         self.write(&format!("if {}", label));
     }
 
-    fn write_call(&mut self, name: &str, n_args: u32) {
+    pub fn write_call(&mut self, name: &str, n_args: u32) {
         self.write(&format!("call {} {}", name, n_args));
     }
 
-    fn write_function(&mut self, name: &str, n_args: u32) {
+    pub fn write_function(&mut self, name: &str, n_args: u32) {
         self.write(&format!("function {} {}", name, n_args));
     }
 
-    fn write_return(&mut self) {
+    pub fn write_return(&mut self) {
         self.write("return");
     }
 }

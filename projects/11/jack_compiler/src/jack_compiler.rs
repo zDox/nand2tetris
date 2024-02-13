@@ -55,11 +55,10 @@ impl JackCompiler {
 
 
         let mut path_buf = file_path.to_path_buf();
-        path_buf.set_file_name(&format!("{}Mine.xml", file_path.file_stem().unwrap().to_str().unwrap()));
-        let mut compilation_engine = CompilationEngine::new(tokens);
+        path_buf.set_file_name(&format!("{}.vm", file_path.file_stem().unwrap().to_str().unwrap()));
+        let mut compilation_engine = CompilationEngine::new(tokens, &path_buf);
         
         compilation_engine.run();
-        compilation_engine.save(&path_buf);
         println!("Compilation of file '{}' completed", file_path.file_name().unwrap().to_str().unwrap());
     }
 }
