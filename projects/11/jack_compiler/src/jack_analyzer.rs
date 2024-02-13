@@ -8,6 +8,10 @@ use tokenizer::{ Tokenizer, Token };
 mod compilation_engine;
 use compilation_engine::CompilationEngine;
 
+#[path = "symbol_table.rs"]
+mod symbol_table;
+use symbol_table::SymbolTable;
+
 pub struct JackAnalyzer {
     path: Box<Path>,
 }

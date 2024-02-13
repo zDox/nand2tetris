@@ -1,5 +1,6 @@
 use std::{ fs::write, path::Path };
 use super::tokenizer::Token;
+use super::symbol_table::SymbolTable;
 
 
 
