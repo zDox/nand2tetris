@@ -1,8 +1,8 @@
 
 use std::{ env, path::Path };
 
-mod jack_analyzer;
-use jack_analyzer::JackAnalyzer;
+mod jack_compiler;
+use jack_compiler::JackCompiler;
 
 fn main() {    
     let args: Vec<String> = env::args().collect();
@@ -12,7 +12,7 @@ fn main() {
     let path_arg = &args[1];
 
     let path = Path::new(&path_arg);
-    let mut jack_analyzer = JackAnalyzer::new(&path);
+    let mut jack_analyzer = JackCompiler::new(&path);
     jack_analyzer.compile();
 
 }

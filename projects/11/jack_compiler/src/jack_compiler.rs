@@ -12,11 +12,12 @@ use compilation_engine::CompilationEngine;
 mod symbol_table;
 use symbol_table::SymbolTable;
 
-pub struct JackAnalyzer {
+
+pub struct JackCompiler {
     path: Box<Path>,
 }
 
-impl JackAnalyzer {
+impl JackCompiler {
     pub fn new(path: &Path) -> Self {
         Self {
             path: path.into(),

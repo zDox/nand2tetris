@@ -2,6 +2,9 @@ use std::{ fs::write, path::Path };
 use super::tokenizer::Token;
 use super::symbol_table::SymbolTable;
 
+#[path = "vm_writer.rs"]
+mod vm_writer;
+use vm_writer::VMWriter;
 
 
 pub struct CompilationEngine {
@@ -66,7 +69,7 @@ impl CompilationEngine {
         if let Some(token) = self.next(){
             if token.equals_type(to_eat_token){
                 let copy = token.clone();
-                self.write_line(&(copy.to_xml()));
+                self.eat(&copy);
             }
             else {
                 panic!("Next token '{}' is not expected. Expected '{}'.", token, to_eat_token);
@@ -79,10 +82,10 @@ impl CompilationEngine {
 
 
     fn eat_tokens(&mut self, to_eat_tokens: &Vec<Token>) {
-        if let Some(token) = self.next(){
+        if let Some(token) = self.peek(){
             if to_eat_tokens.contains(&token) {
                 let copy = token.clone();
-                self.write_line(&(copy.to_xml()));
+                self.eat(&copy);
             }
             else {
                 panic!("Next token '{}' is not expected", token);
@@ -93,7 +96,7 @@ impl CompilationEngine {
         }
     }
 
-    fn peek(&mut self) -> Option<&Token> {
+    fn peek(& self) -> Option<&Token> {
         self.tokens.get(self.index)
     }
 
