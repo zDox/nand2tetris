@@ -54,15 +54,10 @@ impl CompilationEngine {
     }
 
     fn eat(&mut self, to_eat_token: &Token) {
-        if let Some(token) = self.next(){
-            if token == to_eat_token {
-                let copy = token.clone();
-                self.write_line(&(copy.to_xml()));
-            }
-            else {
-                panic!("Next token '{}' is not expected. Expected '{}'.", token, to_eat_token);
-            }
-
+        let next = self.next();
+        if to_eat_token == next {
+            let copy = next.clone();
+            self.write_line(&(copy.to_xml()));
         }
         else {
             panic!("Next token None is not expected. Expected '{}'.", to_eat_token);
@@ -72,13 +67,10 @@ impl CompilationEngine {
 
     fn eat_independent(&mut self, to_eat_token: &Token) -> Token{
         let next_token = self.next();
-        if let Some(token) = next_token{
-            if token.equals_type(to_eat_token){
-                let copy = token.clone();
-                self.eat(&copy);
-                return copy;
-            }
-            panic!("Next token '{}' is not expected. Expected '{}'.", token, to_eat_token);
+        if next_token.equals_type(to_eat_token){
+            let copy = next_token.clone();
+            self.eat(&copy);
+            return copy.clone();
         }
         panic!("Next token None is not expected. Expected '{}'.", to_eat_token);
     }
@@ -86,25 +78,22 @@ impl CompilationEngine {
 
     fn eat_tokens(&mut self, to_eat_tokens: &Vec<Token>) -> Token{
         let next_token = self.next();
-        if let Some(token) = next_token{
-            if to_eat_tokens.contains(token){
-                let copy = token.clone();
-                self.eat(&copy);
-                return copy;
-            }
-            panic!("Next token '{}' is not expected.", token);
+        if to_eat_tokens.contains(next_token){
+            let copy = next_token.clone();
+            self.eat(&copy);
+            return copy.clone();
         }
-        panic!("Next token None is not expected.");
+        panic!("Next token '{}' is not expected.", next_token);
     }
 
-    fn peek(& self) -> Option<&Token> {
-        self.tokens.get(self.index)
+    fn peek(& self) -> &Token {
+        self.tokens.get(self.index).expect("No next token")
     }
 
-    fn next(&mut self) -> Option<&Token> {
+    fn next(&mut self) -> &Token {
         let next = self.tokens.get(self.index);
         self.index += 1;
-        next
+        next.expect("No next token")
     }
 
 
@@ -117,12 +106,11 @@ impl CompilationEngine {
         self.eat_independent(&Token::Identifier(String::from("")));
         self.eat(&Token::Symbol('{'));
 
-        while self.peek().is_some_and(|next_token| 
-                                      [Token::Keyword("static".to_string()), Token::Keyword("field".to_string())].contains(next_token)) {
+        while [Token::Keyword("static".to_string()), Token::Keyword("field".to_string())].contains(self.peek()) {
             self.compile_class_var_dec();
         }
-        while self.peek().is_some_and(|next_token| vec!(
-    Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string())).contains(&next_token)) {
+
+        while [Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string())].contains(self.peek()) {
             self.compile_subroutine();
         }
 
@@ -142,7 +130,7 @@ impl CompilationEngine {
         
 
         let symbol_type: String;
-        if self.peek().is_some_and(|next| next.equals_type(&Token::Identifier("".to_string()))) {
+        if self.peek().equals_type(&Token::Identifier("".to_string())) {
             symbol_type = match self.eat_independent(&Token::Identifier(String::from(""))) {
                 Token::Identifier(indentifier) => indentifier,
                 _ => unreachable!()
@@ -162,7 +150,7 @@ impl CompilationEngine {
 
         self.class_scope.define(&symbol_name, &symbol_type, &symbol_kind);
 
-        while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
+        while self.peek() == &Token::Symbol(',') {
             self.eat(&Token::Symbol(','));
             symbol_name = match self.eat_independent(&Token::Identifier(String::from(""))) {
                 Token::Identifier(identifier) => identifier,
@@ -178,24 +166,33 @@ impl CompilationEngine {
     fn compile_subroutine(&mut self) {
         self.write_tag("subroutineDec");
 
-        self.eat_tokens(&vec!(Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string()))); 
+        self.function_scope.reset();
+
+        let subroutine_type = self.eat_tokens(&vec!(Token::Keyword("function".to_string()), Token::Keyword("method".to_string()), Token::Keyword("constructor".to_string())));
+
+        if subroutine_type == Token::Keyword("method".to_string()) {
+            self.function_scope.define("this", "className", &SymbolKind::ARG);
+        }
 
         // if type consume it else its an identifier for a class type
-        if self.peek().is_some_and(|next_token| [Token::Keyword("void".to_string()), 
-                                   Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(&next_token)) {
+        if [Token::Keyword("void".to_string()),
+            Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(self.peek()) {
 
             self.eat_tokens(&vec!(Token::Keyword("void".to_string()), 
-    Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())));
+                                  Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())));
         }
         else {
             self.eat_independent(&Token::Identifier(String::from("")));
         }
         
 
-        self.eat_independent(&Token::Identifier(String::from("")));
+        let name = match self.eat_independent(&Token::Identifier(String::from(""))) {
+            Token::Identifier(identifier) => identifier,
+            _ => unreachable!(),
+        };
 
         self.eat(&Token::Symbol('('));
-        self.compile_parameter_list();
+        let args =self.compile_parameter_list();
         self.eat(&Token::Symbol(')'));
 
         self.compile_subroutine_body();
@@ -207,12 +204,12 @@ impl CompilationEngine {
         self.write_tag("parameterList");
 
 
-        while self.peek().is_some_and(|next_token: &Token| vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())).contains(&next_token)) {
+        while [Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(self.peek()) {
 
             self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
             self.eat_independent(&Token::Identifier(String::from("")));
 
-            if self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')){
+            if self.peek() == &Token::Symbol(','){
                 self.eat(&Token::Symbol(','));
             }
             else {
@@ -228,7 +225,7 @@ impl CompilationEngine {
 
         self.eat(&Token::Symbol('{'));
         
-        while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Keyword("var".to_string())) {
+        while self.peek() == &Token::Keyword("var".to_string()) {
             self.compile_var_dec();
         }
 
@@ -244,7 +241,7 @@ impl CompilationEngine {
 
         self.eat(&Token::Keyword("var".to_string())); 
 
-        if self.peek().is_some_and(|next| next.equals_type(&Token::Identifier("".to_string()))) {
+        if self.peek().equals_type(&Token::Identifier("".to_string())) {
             self.eat_independent(&Token::Identifier(String::from("")));
         }
         else {
@@ -253,7 +250,7 @@ impl CompilationEngine {
 
         self.eat_independent(&Token::Identifier(String::from("")));
 
-        while self.peek().is_some_and(|next_token: &Token| next_token == &Token::Symbol(',')) {
+        while self.peek() == &Token::Symbol(',') {
             self.eat(&Token::Symbol(','));
             self.eat_independent(&Token::Identifier(String::from("")));
         }
@@ -266,8 +263,8 @@ impl CompilationEngine {
     fn compile_statements(&mut self) {
         self.write_tag("statements");
 
-        while self.peek().is_some_and(|next_token: &Token| next_token.equals_type(&Token::Keyword("".to_string()))) {
-            let next_token = self.peek().expect("Ran out of tokens");
+        while self.peek().equals_type(&Token::Keyword("".to_string())) {
+            let next_token = self.peek();
             if let Token::Keyword(keyword) = next_token{
                 match keyword.as_str(){
                     "let" => self.compile_let(),
@@ -289,7 +286,7 @@ impl CompilationEngine {
         self.eat(&Token::Keyword("let".to_string())); 
         self.eat_independent(&Token::Identifier(String::from("")));
 
-        if self.peek().is_some_and(|next_token| next_token == &Token::Symbol('[')) {
+        if self.peek() == &Token::Symbol('[') {
             self.eat(&Token::Symbol('['));
             self.compile_expression();
             self.eat(&Token::Symbol(']'));
@@ -314,7 +311,7 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('}'));
 
         // else clause
-        if self.peek().is_some_and(|next_token| next_token == &Token::Keyword("else".to_string())) {
+        if self.peek() == &Token::Keyword("else".to_string()) {
             self.eat(&Token::Keyword("else".to_string())); 
             self.eat(&Token::Symbol('{'));
             self.compile_statements();
@@ -348,7 +345,7 @@ impl CompilationEngine {
         self.eat_independent(&Token::Identifier(String::from("")));
 
         // if member subroutine call
-        if self.peek().is_some_and(|next_token| next_token == &Token::Symbol('.')) {
+        if self.peek() == &Token::Symbol('.') {
             self.eat(&Token::Symbol('.'));
             self.eat_independent(&Token::Identifier(String::from("")));
         }
@@ -368,7 +365,7 @@ impl CompilationEngine {
 
         self.eat(&Token::Keyword("return".to_string())); 
 
-        if self.peek().is_some_and(|next_token| next_token != &Token::Symbol(';')) {
+        if self.peek() != &Token::Symbol(';') {
             self.compile_expression();
         }
         self.eat(&Token::Symbol(';'));
@@ -380,11 +377,10 @@ impl CompilationEngine {
         self.write_tag("expression");
 
         self.compile_term();
-        while self.peek().is_some_and(|next_token| [
-                                      Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), 
-                                      Token::Symbol('&'), Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'),
-                                      Token::Symbol('=')]
-                                      .contains(next_token)) {
+        while [
+            Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), Token::Symbol('&'),
+            Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'), Token::Symbol('=')]
+                .contains(self.peek()) {
             self.eat_tokens(&vec!(
                     Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), 
                     Token::Symbol('&'), Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'),
@@ -398,7 +394,7 @@ impl CompilationEngine {
     fn compile_term(&mut self) {
         self.write_tag("term");
 
-        let next_token: Token = self.peek().unwrap().clone();
+        let next_token: Token = self.peek().clone();
         match next_token {
             Token::Keyword(keyword) => self.eat(&Token::Keyword(keyword.to_string())),
             Token::Symbol('(') => {
@@ -414,7 +410,7 @@ impl CompilationEngine {
             Token::StringConstant(string) => self.eat(&Token::StringConstant(string)),
             Token::Identifier(identifier) => {
                 self.index += 1;
-                let look_ahead_token = self.peek().unwrap().clone();
+                let look_ahead_token = self.peek().clone();
                 self.index -= 1;
                 match look_ahead_token {
                     // Array access
@@ -443,7 +439,7 @@ impl CompilationEngine {
         let mut counter = 1; 
 
         self.compile_expression();
-        while self.peek().is_some_and(|next_token| next_token == &Token::Symbol(',')) {
+        while self.peek() == &Token::Symbol(',') {
             self.eat(&Token::Symbol(','));
             self.compile_expression();
             counter += 1;
