@@ -31,6 +31,7 @@ impl Default for Symbol{
 
 pub struct SymbolTable {
     table: HashMap<String, Symbol>,
+    table_name: String,
     var_count_map: HashMap<SymbolKind, u32>,
 }
 
@@ -39,12 +40,18 @@ impl SymbolTable {
         Self {
             table: HashMap::new(),
             var_count_map: HashMap::new(),
+            table_name: String::from(""),
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, table_name: &str) {
         self.table.clear();
         self.var_count_map.clear();
+        self.table_name = table_name.to_string();
+    }
+
+    pub fn get_table_name(&self) -> &str {
+        &self.table_name
     }
 
     pub fn define(&mut self, name: &str, symbol_type: &str, kind: &SymbolKind) {
