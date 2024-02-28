@@ -71,8 +71,12 @@ impl SymbolTable {
         *self.var_count_map.entry(*kind).or_insert(0)
     }
 
+    pub fn kind_of(&self, name: &str) -> Option<SymbolKind> {
+        self.table.get(name).and_then(|val| Some(val.kind))
+    }
+
     pub fn type_of(&self, name: &str) -> Option<&str> {
-        self.table.get(name).and_then(|val| Some(val.name.as_str()))
+        self.table.get(name).and_then(|val| Some(val.symbol_type.as_str()))
     }
 
     pub fn index_of(&self, name: &str) -> Option<u32> {

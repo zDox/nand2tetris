@@ -4,11 +4,12 @@ use super::symbol_table::{ SymbolTable, SymbolKind };
 
 #[path = "vm_writer.rs"]
 mod vm_writer;
-use vm_writer::{VMWriter, Segment};
+use vm_writer::{VMWriter, Segment, ArithmeticCommand};
 
 
 pub struct CompilationEngine {
     index: usize,
+    label_counter: usize,
     tokens: Vec<Token>,
     writer: VMWriter,
     class_scope: SymbolTable,
@@ -19,6 +20,7 @@ impl CompilationEngine {
     pub fn new(tokens: Vec<Token>, output_file: &Path) -> Self {
         Self { 
             index: 0,
+            label_counter: 0,
             tokens,
             writer: VMWriter::new(output_file),
             class_scope: SymbolTable::new(),
@@ -31,30 +33,35 @@ impl CompilationEngine {
         self.writer.close();
     }
 
+    fn increase_label_counter(&mut self) -> usize {
+        self.label_counter += 1;
+        self.label_counter
+    }
+
     fn eat(&mut self, to_eat_token: &Token) {
         let next = self.next();
         if to_eat_token == next {
-            let _copy = next.clone();
+            println!("Eat: {}", next);
         }
         else {
-            panic!("Next token None is not expected. Expected '{}'.", to_eat_token);
+            panic!("Next token {} is not expected. Expected '{}'.", next, to_eat_token);
         }
     }
 
 
     fn eat_independent(&mut self, to_eat_token: &Token) -> Token{
-        let next_token = self.next();
+        let next_token = self.peek();
         if next_token.equals_type(to_eat_token){
             let copy = next_token.clone();
             self.eat(&copy);
             return copy.clone();
         }
-        panic!("Next token None is not expected. Expected '{}'.", to_eat_token);
+        panic!("Next token {} is not expected. Expected '{}'.", next_token, to_eat_token);
     }
 
 
     fn eat_tokens(&mut self, to_eat_tokens: &Vec<Token>) -> Token{
-        let next_token = self.next();
+        let next_token = self.peek();
         if to_eat_tokens.contains(next_token){
             let copy = next_token.clone();
             self.eat(&copy);
@@ -171,7 +178,7 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('{'));
 
         if self.peek() == &Token::Keyword("var".to_string()) {
-            while self.next() == &Token::Keyword("var".to_string()) {
+            while self.peek() == &Token::Keyword("var".to_string()) {
                 self.compile_var_dec();
             }
         }
@@ -259,7 +266,7 @@ impl CompilationEngine {
                     "let" => self.compile_let(),
                     "if" => self.compile_if(),
                     "while" => self.compile_while(),
-                    "do" => self.compile_do(true),
+                    "do" => self.compile_do(),
                     "return" => self.compile_return(),
                     _ => unreachable!(),
                 }
@@ -273,7 +280,10 @@ impl CompilationEngine {
 
     fn compile_let(&mut self) {
         self.eat(&Token::Keyword("let".to_string())); 
-        self.eat_independent(&Token::Identifier(String::from("")));
+        let name = match self.eat_independent(&Token::Identifier(String::from(""))) {
+            Token::Identifier(identifier) => identifier,
+            _ => unreachable!()
+        };
 
         if self.peek() == &Token::Symbol('[') {
             self.eat(&Token::Symbol('['));
@@ -284,18 +294,48 @@ impl CompilationEngine {
         self.eat(&Token::Symbol('='));
         self.compile_expression();
         self.eat(&Token::Symbol(';'));
+        
+        
+        let kind: SymbolKind;
+        let index: u32;
+        if let Some(symbol_kind) = self.function_scope.kind_of(&name) {
+            kind = symbol_kind;
+            index = self.function_scope.index_of(&name).expect("Expected index");
+        }
+        else if let Some(symbol_kind) = self.class_scope.kind_of(&name) {
+            kind = symbol_kind;
+            index = self.class_scope.index_of(&name).expect("Expected index");
+        }
+        else {
+            panic!("Expected to find symbol with name '{}' in symbol table", name);
+        }
+        let segment = match kind {
+            SymbolKind::STATIC => Segment::STATIC,
+            SymbolKind::ARG => Segment::ARGUMENT,
+            SymbolKind::VAR => Segment::LOCAL,
+            SymbolKind::FIELD => Segment::THIS,
+        };
 
+        self.writer.write_pop(&segment, index);
     }
 
     fn compile_if(&mut self) {
+        let label_1 = &format!("IF_TRUE_{}", self.label_counter);
+        let label_2 = &format!("IF_WHILE_{}", self.increase_label_counter());
 
         self.eat(&Token::Keyword("if".to_string())); 
         self.eat(&Token::Symbol('('));
         self.compile_expression();
+        self.writer.write_arithmetic(&ArithmeticCommand::NOT);
+        self.writer.write_if(label_1);
+
         self.eat(&Token::Symbol(')'));
         self.eat(&Token::Symbol('{'));
         self.compile_statements();
         self.eat(&Token::Symbol('}'));
+        
+        self.writer.write_goto(label_2);
+        self.writer.write_label(label_1);
 
         // else clause
         if self.peek() == &Token::Keyword("else".to_string()) {
@@ -304,53 +344,49 @@ impl CompilationEngine {
             self.compile_statements();
             self.eat(&Token::Symbol('}'));
         }
+
+        self.writer.write_label(label_2);
     }
 
     fn compile_while(&mut self) {
+        let label_1 = &format!("WHILE_TRUE_{}", self.label_counter);
+        let label_2 = &format!("WHILE_FALSE_{}", self.increase_label_counter());
 
         self.eat(&Token::Keyword("while".to_string())); 
+
+
+        self.writer.write_label(label_1);
 
         self.eat(&Token::Symbol('('));
         self.compile_expression();
         self.eat(&Token::Symbol(')'));
 
+        self.writer.write_arithmetic(&ArithmeticCommand::NOT);
+        self.writer.write_if(label_1);
+
         self.eat(&Token::Symbol('{'));
         self.compile_statements();
         self.eat(&Token::Symbol('}'));
 
+        self.writer.write_goto(label_1);
+        self.writer.write_label(label_2);
     }
 
-    fn compile_do(&mut self, with_do: bool) {
+    fn compile_do(&mut self) {
+        self.eat(&Token::Keyword("do".to_string()));
 
-        if with_do {
-            self.eat(&Token::Keyword("do".to_string())); 
-        }
-        self.eat_independent(&Token::Identifier(String::from("")));
-
-        // if member subroutine call
-        if self.peek() == &Token::Symbol('.') {
-            self.eat(&Token::Symbol('.'));
-            self.eat_independent(&Token::Identifier(String::from("")));
-        }
-
-        self.eat(&Token::Symbol('('));
-        self.compile_expression_list();
-        self.eat(&Token::Symbol(')'));
-
-        if with_do {
-            self.eat(&Token::Symbol(';'));
-        }
+        self.compile_expression();
+        self.writer.write_pop(&Segment::TEMP, 0);
     }
 
     fn compile_return(&mut self) {
-
         self.eat(&Token::Keyword("return".to_string())); 
 
         if self.peek() != &Token::Symbol(';') {
             self.compile_expression();
         }
         self.eat(&Token::Symbol(';'));
-
+        self.writer.write_return();
     }
 
     fn compile_expression(&mut self) {
@@ -370,7 +406,6 @@ impl CompilationEngine {
     }
 
     fn compile_term(&mut self) {
-
         let next_token: Token = self.peek().clone();
         match next_token {
             Token::Keyword(keyword) => self.eat(&Token::Keyword(keyword.to_string())),
@@ -398,7 +433,9 @@ impl CompilationEngine {
                         self.eat(&Token::Symbol(']'));
                     }
                     // subroutine call
-                    Token::Symbol('(') | Token::Symbol('.') => self.compile_do(false),
+                    Token::Symbol('(') | Token::Symbol('.') => {
+                        todo!();
+                    },
                     
                     Token::None => unreachable!(),
 
