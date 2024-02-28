@@ -5,18 +5,20 @@ use std::{
 
 pub enum Segment {
     ARGUMENT,
+    CONSTANT,
     LOCAL,
     STATIC,
     THIS,
     THAT,
     POINTER,
-    TEMP
+    TEMP,
 }
 
 impl Segment {
     fn as_str(&self) -> &str {
         match self {
             Self::ARGUMENT => "arg",
+            Self::CONSTANT => "constant",
             Self::LOCAL => "local",
             Self::STATIC => "static",
             Self::THIS => "this",

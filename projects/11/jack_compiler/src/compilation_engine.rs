@@ -4,7 +4,7 @@ use super::symbol_table::{ SymbolTable, SymbolKind };
 
 #[path = "vm_writer.rs"]
 mod vm_writer;
-use vm_writer::VMWriter;
+use vm_writer::{VMWriter, Segment};
 
 
 pub struct CompilationEngine {
@@ -98,7 +98,6 @@ impl CompilationEngine {
     }
 
     fn compile_class_var_dec(&mut self) {
-
         let symbol_kind: SymbolKind = match self.eat_tokens(&vec!(Token::Keyword("field".to_string()), Token::Keyword("static".to_string()))) {
             Token::Keyword(ref keyword) if keyword == "field" => SymbolKind::FIELD,
             Token::Keyword(ref keyword) if keyword == "static" => SymbolKind::STATIC,
@@ -136,7 +135,6 @@ impl CompilationEngine {
             self.class_scope.define(&symbol_name, &symbol_type, &symbol_kind);
         }
         self.eat(&Token::Symbol(';'));
-        
     }
 
     fn compile_subroutine(&mut self) {
@@ -165,13 +163,35 @@ impl CompilationEngine {
             self.function_scope.define("this", "className", &SymbolKind::ARG);
         }
 
+
         self.eat(&Token::Symbol('('));
-        let args = self.compile_parameter_list();
+        self.compile_parameter_list();
         self.eat(&Token::Symbol(')'));
 
-        let vars = self.compile_var_declarations();
-
         self.eat(&Token::Symbol('{'));
+
+        if self.peek() == &Token::Keyword("var".to_string()) {
+            while self.next() == &Token::Keyword("var".to_string()) {
+                self.compile_var_dec();
+            }
+        }
+
+        self.writer.write_function(&format!("{}.{}", self.class_scope.get_table_name(), &name),
+                                   self.function_scope.var_count(&SymbolKind::VAR));
+
+        // Method
+        if subroutine_type == Token::Keyword("method".to_string()) {
+            self.writer.write_push(&Segment::ARGUMENT, 0);
+            self.writer.write_pop(&Segment::POINTER, 0);
+        }
+
+        // Constructor
+        else if subroutine_type == Token::Keyword("constructor".to_string()) {
+            self.writer.write_push(&Segment::CONSTANT, self.class_scope.var_count(&SymbolKind::FIELD));
+            self.writer.write_call("Memory.alloc", 1);
+            self.writer.write_pop(&Segment::POINTER, 0);
+        }
+
 
         self.compile_statements();
 
@@ -192,15 +212,6 @@ impl CompilationEngine {
                 continue;
             }
         }
-    }
-
-    fn compile_var_declarations(&mut self) -> u32 {
-        let mut counter = 0;
-        while self.peek() == &Token::Keyword("var".to_string()) {
-            self.compile_var_dec();
-            counter += 1;
-        }
-        counter
     }
 
     fn compile_var_dec(&mut self) {
@@ -250,15 +261,17 @@ impl CompilationEngine {
                     "while" => self.compile_while(),
                     "do" => self.compile_do(true),
                     "return" => self.compile_return(),
-                    _ => (),
+                    _ => unreachable!(),
                 }
+            }
+            else {
+                unreachable!();
             }
         }
 
     }
 
     fn compile_let(&mut self) {
-
         self.eat(&Token::Keyword("let".to_string())); 
         self.eat_independent(&Token::Identifier(String::from("")));
 
