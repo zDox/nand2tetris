@@ -54,6 +54,10 @@ impl SymbolTable {
         &self.table_name
     }
 
+    pub fn has_entry(&self, name: &str) -> bool {
+        self.table.contains_key(name)
+    }
+
     pub fn define(&mut self, name: &str, symbol_type: &str, kind: &SymbolKind) {
         let var_count: &mut u32 = self.var_count_map.entry(*kind).or_insert(0);
         *var_count += 1;

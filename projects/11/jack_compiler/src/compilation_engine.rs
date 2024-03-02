@@ -70,6 +70,13 @@ impl CompilationEngine {
         panic!("Next token '{}' is not expected.", next_token);
     }
 
+    fn eat_identifier(&mut self) -> String {
+        match self.eat_independent(&Token::Identifier("".to_string())) {
+            Token::Identifier(indentifier) => indentifier.clone(),
+            _ => unreachable!(),
+        }
+    }
+
     fn peek(& self) -> &Token {
         self.tokens.get(self.index).expect("No next token")
     }
@@ -377,6 +384,7 @@ impl CompilationEngine {
 
         self.compile_expression();
         self.writer.write_pop(&Segment::TEMP, 0);
+        self.eat(&Token::Symbol(';'));
     }
 
     fn compile_return(&mut self) {
@@ -396,11 +404,19 @@ impl CompilationEngine {
             Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), Token::Symbol('&'),
             Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'), Token::Symbol('=')]
                 .contains(self.peek()) {
-            self.eat_tokens(&vec!(
+            let operator = match self.eat_tokens(&vec!(
                     Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), 
                     Token::Symbol('&'), Token::Symbol('|'), Token::Symbol('<'), Token::Symbol('>'),
-                    Token::Symbol('=')));
+                    Token::Symbol('='))) {
+                Token::Symbol(symbol) => symbol,
+                _ => unreachable!(),
+            };
             self.compile_term();
+            
+            let arithmetic_command = match operator {
+                '+' => ArithmeticCommand::ADD,
+                '-' => ArithmeticCommand::SUB,
+
         }
 
     }
@@ -432,9 +448,53 @@ impl CompilationEngine {
                         self.compile_expression();
                         self.eat(&Token::Symbol(']'));
                     }
-                    // subroutine call
+                    // call subroutine
                     Token::Symbol('(') | Token::Symbol('.') => {
-                        todo!();
+                        let function_name: String;
+                        let mut class_name;
+                        if look_ahead_token == Token::Symbol('(') {
+                            function_name = self.eat_identifier();
+                            class_name = "this".to_string();
+                        } 
+                        else {
+                            class_name = self.eat_identifier();
+                            self.eat(&Token::Symbol('.'));
+                            function_name = self.eat_identifier();
+                        }
+
+                        self.eat(&Token::Symbol('('));
+                        
+                        let mut arguments = 0;
+
+                        if self.function_scope.has_entry(&class_name) {
+                            let segment = match self.function_scope.kind_of(&class_name).unwrap() {
+                                SymbolKind::ARG => Segment::ARGUMENT,
+                                SymbolKind::VAR => Segment::LOCAL,
+                                SymbolKind::FIELD => Segment::THIS,
+                                SymbolKind::STATIC => Segment::STATIC,
+                            };
+                            self.writer.write_push(&segment, self.function_scope.index_of(&class_name).unwrap());
+                            class_name = self.function_scope.type_of(&class_name).unwrap().to_string();
+                            arguments += 1;
+                        }
+
+                        else if self.class_scope.has_entry(&class_name) {
+                            let segment = match self.class_scope.kind_of(&class_name).unwrap() {
+                                SymbolKind::ARG => Segment::ARGUMENT,
+                                SymbolKind::VAR => Segment::LOCAL,
+                                SymbolKind::FIELD => Segment::THIS,
+                                SymbolKind::STATIC => Segment::STATIC,
+                            };
+                            self.writer.write_push(&segment, self.class_scope.index_of(&class_name).unwrap());
+                            class_name = self.class_scope.type_of(&class_name).unwrap().to_string();
+                            arguments += 1;
+                        }
+
+                        arguments += self.compile_expression_list();
+
+                        self.writer.write_call(&format!("{}.{}", class_name, function_name), arguments+1);
+
+                        self.eat(&Token::Symbol(')'));
                     },
                     
                     Token::None => unreachable!(),
