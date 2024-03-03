@@ -412,11 +412,30 @@ impl CompilationEngine {
                 _ => unreachable!(),
             };
             self.compile_term();
+
+            match operator {
+                '*' => {
+                    self.writer.write_call("Math.multiply", 2);
+                    return;
+                }
+                '/' => {
+                    self.writer.write_call("Math.divide", 2);
+                    return;
+                }
+                 _  => (),
+            }
             
             let arithmetic_command = match operator {
                 '+' => ArithmeticCommand::ADD,
                 '-' => ArithmeticCommand::SUB,
-
+                '&' => ArithmeticCommand::AND,
+                '|' => ArithmeticCommand::OR,
+                '<' => ArithmeticCommand::GT,
+                '>' => ArithmeticCommand::LT,
+                '=' => ArithmeticCommand::EQ,
+                 _  => unreachable!(),
+            };
+            self.writer.write_arithmetic(&arithmetic_command);
         }
 
     }
@@ -490,9 +509,11 @@ impl CompilationEngine {
                             arguments += 1;
                         }
 
+                        println!("Call: {}.{} {}", class_name, function_name, arguments);
+
                         arguments += self.compile_expression_list();
 
-                        self.writer.write_call(&format!("{}.{}", class_name, function_name), arguments+1);
+                        self.writer.write_call(&format!("{}.{}", class_name, function_name), arguments);
 
                         self.eat(&Token::Symbol(')'));
                     },
