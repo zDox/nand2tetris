@@ -17,7 +17,7 @@ pub enum Segment {
 impl Segment {
     fn as_str(&self) -> &str {
         match self {
-            Self::ARGUMENT => "arg",
+            Self::ARGUMENT => "argument",
             Self::CONSTANT => "constant",
             Self::LOCAL => "local",
             Self::STATIC => "static",
@@ -53,7 +53,7 @@ impl ArithmeticCommand {
             Self::LT  => "lt",
             Self::AND  => "and",
             Self::OR  => "or",
-            Self::NOT  => "or",
+            Self::NOT  => "not",
         }
     }
 }
@@ -101,7 +101,7 @@ impl VMWriter {
     }
 
     pub fn write_if(&mut self, label: &str) {
-        self.write(&format!("if {}", label));
+        self.write(&format!("if-goto {}", label));
     }
 
     pub fn write_call(&mut self, name: &str, n_args: u32) {

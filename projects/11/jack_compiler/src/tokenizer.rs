@@ -20,7 +20,7 @@ static SYMBOLS: [char; 19] = [
 pub enum Token {
     Keyword(String),
     Symbol(char),
-    IntegerConstant(u16),
+    IntegerConstant(u32),
     StringConstant(String),
     Identifier(String),
     None,

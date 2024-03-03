@@ -215,9 +215,27 @@ impl CompilationEngine {
 
     fn compile_parameter_list(&mut self) {
         while [Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string())].contains(self.peek()) {
+            let var_type;
+            if self.peek().equals_type(&Token::Identifier("".to_string())) {
+                var_type = match self.eat_independent(&Token::Identifier(String::from(""))) {
+                    Token::Identifier(identifier) => identifier,
+                    _ => unreachable!(),
+                };
+            }
+            else {
+                var_type = match self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))) {
+                    Token::Keyword(keyword) => keyword,
+                    _ => unreachable!(),
+                }; 
+            }
 
-            self.eat_tokens(&vec!(Token::Keyword("boolean".to_string()), Token::Keyword("int".to_string()), Token::Keyword("char".to_string()))); 
-            self.eat_independent(&Token::Identifier(String::from("")));
+            let var_name = match self.eat_independent(&Token::Identifier(String::from(""))) {
+                Token::Identifier(indentifier) => indentifier,
+                _ => unreachable!(),
+            };
+
+            self.function_scope.define(&var_name, &var_type, &SymbolKind::ARG);
+            println!("Parameter: {} {} arg: {}", var_name, var_type, self.function_scope.index_of(&var_name).unwrap());
 
             if self.peek() == &Token::Symbol(','){
                 self.eat(&Token::Symbol(','));
@@ -251,6 +269,7 @@ impl CompilationEngine {
         };
 
         self.function_scope.define(&var_name, &var_type, &SymbolKind::VAR);
+        println!("Var: {}, {}", var_name, var_type);
 
         while self.peek() == &Token::Symbol(',') {
             self.eat(&Token::Symbol(','));
@@ -259,6 +278,7 @@ impl CompilationEngine {
                 _ => unreachable!(),
             };
             self.function_scope.define(&var_name, &var_type, &SymbolKind::VAR);
+            println!("Var: {}, {}", var_name, var_type);
         }
 
         self.eat(&Token::Symbol(';'));
@@ -369,7 +389,7 @@ impl CompilationEngine {
         self.eat(&Token::Symbol(')'));
 
         self.writer.write_arithmetic(&ArithmeticCommand::NOT);
-        self.writer.write_if(label_1);
+        self.writer.write_if(label_2);
 
         self.eat(&Token::Symbol('{'));
         self.compile_statements();
@@ -430,8 +450,8 @@ impl CompilationEngine {
                 '-' => ArithmeticCommand::SUB,
                 '&' => ArithmeticCommand::AND,
                 '|' => ArithmeticCommand::OR,
-                '<' => ArithmeticCommand::GT,
-                '>' => ArithmeticCommand::LT,
+                '>' => ArithmeticCommand::GT,
+                '<' => ArithmeticCommand::LT,
                 '=' => ArithmeticCommand::EQ,
                  _  => unreachable!(),
             };
@@ -443,7 +463,22 @@ impl CompilationEngine {
     fn compile_term(&mut self) {
         let next_token: Token = self.peek().clone();
         match next_token {
-            Token::Keyword(keyword) => self.eat(&Token::Keyword(keyword.to_string())),
+            Token::Keyword(keyword) => {
+                self.eat(&Token::Keyword(keyword.to_string()));
+                match keyword.as_str(){
+                    "true" => {
+                        self.writer.write_push(&Segment::CONSTANT, 0);
+                        self.writer.write_arithmetic(&ArithmeticCommand::NOT);
+                    },
+                    "false" | "null" => {
+                        self.writer.write_push(&Segment::CONSTANT, 0);
+                    },
+                    "this" => {
+                        self.writer.write_push(&Segment::POINTER, 0);
+                    }
+                    _ => unreachable!(),
+                }
+            }
             Token::Symbol('(') => {
                 self.eat(&Token::Symbol('('));
                 self.compile_expression();
@@ -451,9 +486,18 @@ impl CompilationEngine {
             }
             next_token if [Token::Symbol('-'), Token::Symbol('~')].contains(&next_token) => {
                 self.eat(&next_token);
+                let arithmetic_command = match next_token {
+                    Token::Symbol('~') => ArithmeticCommand::NOT,
+                    Token::Symbol('-') => ArithmeticCommand::NEG,
+                    _ => unreachable!(),
+                };
                 self.compile_term();
+                self.writer.write_arithmetic(&arithmetic_command);
             }
-            Token::IntegerConstant(integer) => self.eat(&Token::IntegerConstant(integer)),
+            Token::IntegerConstant(integer) => {
+                self.eat(&Token::IntegerConstant(integer));
+                self.writer.write_push(&Segment::CONSTANT, integer);
+            }
             Token::StringConstant(string) => self.eat(&Token::StringConstant(string)),
             Token::Identifier(identifier) => {
                 self.index += 1;
@@ -509,7 +553,6 @@ impl CompilationEngine {
                             arguments += 1;
                         }
 
-                        println!("Call: {}.{} {}", class_name, function_name, arguments);
 
                         arguments += self.compile_expression_list();
 
@@ -521,7 +564,34 @@ impl CompilationEngine {
                     Token::None => unreachable!(),
 
                     // Else should be a variable
-                    _ => self.eat(&Token::Identifier(identifier)),
+                    _ => {
+                        self.eat(&Token::Identifier(identifier.clone()));
+                        let segment;
+                        let index;
+                        println!("Variable: {}", identifier);
+
+                        if self.function_scope.has_entry(&identifier) {
+                            segment = match self.function_scope.kind_of(&identifier).unwrap() {
+                                SymbolKind::ARG => Segment::ARGUMENT,
+                                SymbolKind::VAR => Segment::LOCAL,
+                                SymbolKind::FIELD => Segment::THIS,
+                                SymbolKind::STATIC => Segment::STATIC,
+                            };
+                            index = self.function_scope.index_of(&identifier).unwrap();
+                        }
+
+                        else {
+                            segment = match self.class_scope.kind_of(&identifier).unwrap() {
+                                SymbolKind::ARG => Segment::ARGUMENT,
+                                SymbolKind::VAR => Segment::LOCAL,
+                                SymbolKind::FIELD => Segment::THIS,
+                                SymbolKind::STATIC => Segment::STATIC,
+                            };
+                            index = self.class_scope.index_of(&identifier).unwrap();
+                        }
+
+                        self.writer.write_push(&segment, index);
+                    }
                 }
             },
             _ => (),
