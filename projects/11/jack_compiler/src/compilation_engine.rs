@@ -529,7 +529,12 @@ impl CompilationEngine {
                         
                         let mut arguments = 0;
 
-                        if self.function_scope.has_entry(&class_name) {
+                        if class_name == "this" {
+                            self.writer.write_push(&Segment::POINTER, 0);
+                            class_name = self.class_scope.get_table_name().to_string();
+                            arguments += 1;
+                        }
+                        else if self.function_scope.has_entry(&class_name) {
                             let segment = match self.function_scope.kind_of(&class_name).unwrap() {
                                 SymbolKind::ARG => Segment::ARGUMENT,
                                 SymbolKind::VAR => Segment::LOCAL,
