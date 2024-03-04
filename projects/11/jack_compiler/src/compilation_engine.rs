@@ -6,6 +6,9 @@ use super::symbol_table::{ SymbolTable, SymbolKind };
 mod vm_writer;
 use vm_writer::{VMWriter, Segment, ArithmeticCommand};
 
+#[path = "mapping.rs"]
+mod mapping;
+use mapping::to_index;
 
 pub struct CompilationEngine {
     index: usize,
@@ -514,7 +517,14 @@ impl CompilationEngine {
                 self.writer.write_push(&Segment::CONSTANT, integer);
             }
             Token::StringConstant(string) => {
-                self.eat(&Token::StringConstant(string));
+                self.eat(&Token::StringConstant(string.clone()));
+                self.writer.write_push(&Segment::CONSTANT, string.len() as u32);
+                self.writer.write_call("String.new", 1);
+
+                string.chars().for_each(|c| {
+                    self.writer.write_push(&Segment::CONSTANT, to_index(c).expect("Charset does not contain") as u32);
+                    self.writer.write_call("String.appendChar", 2);
+                });
             },
             Token::Identifier(identifier) => {
                 self.index += 1;
