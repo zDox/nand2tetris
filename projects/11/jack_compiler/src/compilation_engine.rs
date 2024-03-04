@@ -77,6 +77,29 @@ impl CompilationEngine {
         }
     }
 
+    fn lookup(&self, name: &str) -> (Segment, u32) {
+        let kind: SymbolKind;
+        let index: u32;
+        if let Some(symbol_kind) = self.function_scope.kind_of(&name) {
+            kind = symbol_kind;
+            index = self.function_scope.index_of(&name).expect("Expected index");
+        }
+        else if let Some(symbol_kind) = self.class_scope.kind_of(&name) {
+            kind = symbol_kind;
+            index = self.class_scope.index_of(&name).expect("Expected index");
+        }
+        else {
+            panic!("Expected to find symbol with name '{}' in symbol table", name);
+        }
+        let segment = match kind {
+            SymbolKind::STATIC => Segment::STATIC,
+            SymbolKind::ARG => Segment::ARGUMENT,
+            SymbolKind::VAR => Segment::LOCAL,
+            SymbolKind::FIELD => Segment::THIS,
+        };
+        return (segment, index);
+    }
+
     fn peek(& self) -> &Token {
         self.tokens.get(self.index).expect("No next token")
     }
@@ -312,38 +335,31 @@ impl CompilationEngine {
             _ => unreachable!()
         };
 
-        if self.peek() == &Token::Symbol('[') {
+        let (segment, index) = self.lookup(&name);
+
+        let array_assign = self.peek() == &Token::Symbol('[');
+
+        if array_assign {
+            self.writer.write_push(&segment, index);
             self.eat(&Token::Symbol('['));
             self.compile_expression();
             self.eat(&Token::Symbol(']'));
+            self.writer.write_arithmetic(&ArithmeticCommand::ADD);
         }
 
         self.eat(&Token::Symbol('='));
         self.compile_expression();
         self.eat(&Token::Symbol(';'));
-        
-        
-        let kind: SymbolKind;
-        let index: u32;
-        if let Some(symbol_kind) = self.function_scope.kind_of(&name) {
-            kind = symbol_kind;
-            index = self.function_scope.index_of(&name).expect("Expected index");
-        }
-        else if let Some(symbol_kind) = self.class_scope.kind_of(&name) {
-            kind = symbol_kind;
-            index = self.class_scope.index_of(&name).expect("Expected index");
+
+        if array_assign {
+            self.writer.write_pop(&Segment::TEMP, 0);
+            self.writer.write_pop(&Segment::POINTER, 1);
+            self.writer.write_push(&Segment::TEMP, 0);
+            self.writer.write_pop(&Segment::THAT, 0);
         }
         else {
-            panic!("Expected to find symbol with name '{}' in symbol table", name);
+            self.writer.write_pop(&segment, index);
         }
-        let segment = match kind {
-            SymbolKind::STATIC => Segment::STATIC,
-            SymbolKind::ARG => Segment::ARGUMENT,
-            SymbolKind::VAR => Segment::LOCAL,
-            SymbolKind::FIELD => Segment::THIS,
-        };
-
-        self.writer.write_pop(&segment, index);
     }
 
     fn compile_if(&mut self) {
@@ -418,7 +434,6 @@ impl CompilationEngine {
     }
 
     fn compile_expression(&mut self) {
-
         self.compile_term();
         while [
             Token::Symbol('+'), Token::Symbol('-'), Token::Symbol('*'), Token::Symbol('/'), Token::Symbol('&'),
@@ -498,7 +513,9 @@ impl CompilationEngine {
                 self.eat(&Token::IntegerConstant(integer));
                 self.writer.write_push(&Segment::CONSTANT, integer);
             }
-            Token::StringConstant(string) => self.eat(&Token::StringConstant(string)),
+            Token::StringConstant(string) => {
+                self.eat(&Token::StringConstant(string));
+            },
             Token::Identifier(identifier) => {
                 self.index += 1;
                 let look_ahead_token = self.peek().clone();
@@ -506,10 +523,18 @@ impl CompilationEngine {
                 match look_ahead_token {
                     // Array access
                     Token::Symbol('[') => {
-                        self.eat(&Token::Identifier(identifier));
+                        self.eat(&Token::Identifier(identifier.clone()));
+
+                        let (segment, index) = self.lookup(&identifier);
+                        self.writer.write_push(&segment, index);
+
                         self.eat(&Token::Symbol('['));
                         self.compile_expression();
                         self.eat(&Token::Symbol(']'));
+
+                        self.writer.write_arithmetic(&ArithmeticCommand::ADD);
+                        self.writer.write_pop(&Segment::POINTER, 1);
+                        self.writer.write_push(&Segment::THAT, 0);
                     }
                     // call subroutine
                     Token::Symbol('(') | Token::Symbol('.') => {
