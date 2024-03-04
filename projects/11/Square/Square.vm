@@ -9,7 +9,7 @@ pop this 1
 push argument 2
 pop this 2
 push pointer 0
-call Square.draw 2
+call Square.draw 1
 pop temp 0
 push pointer 0
 return
@@ -72,14 +72,14 @@ and
 not
 if-goto IF_TRUE_0
 push pointer 0
-call Square.erase 2
+call Square.erase 1
 pop temp 0
 push this 2
 push constant 2
 add
 pop this 2
 push pointer 0
-call Square.draw 2
+call Square.draw 1
 pop temp 0
 goto IF_WHILE_1
 label IF_TRUE_0
@@ -94,14 +94,14 @@ gt
 not
 if-goto IF_TRUE_1
 push pointer 0
-call Square.erase 2
+call Square.erase 1
 pop temp 0
 push this 2
 push constant 2
 sub
 pop this 2
 push pointer 0
-call Square.draw 2
+call Square.draw 1
 pop temp 0
 goto IF_WHILE_2
 label IF_TRUE_1

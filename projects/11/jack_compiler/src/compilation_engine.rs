@@ -604,13 +604,19 @@ impl CompilationEngine {
     }
 
     fn compile_expression_list(&mut self) -> u32 {
-        let mut counter = 1; 
+        let mut counter = 0; 
 
-        self.compile_expression();
-        while self.peek() == &Token::Symbol(',') {
-            self.eat(&Token::Symbol(','));
+        while self.peek() != &Token::Symbol(')') {
             self.compile_expression();
             counter += 1;
+
+            if self.peek() == &Token::Symbol(',') {
+                self.eat(&Token::Symbol(','));
+                continue;
+            }
+            else {
+                return counter;
+            }
         }
         return counter
     }
